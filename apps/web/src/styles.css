@@ -1,0 +1,44 @@
+:root {
+  --o2b-paper: #f4f6f8;
+  --o2b-line: #dde2e7;
+  --o2b-ink: #1d232b;
+  --o2b-muted: #5f6873;
+  --o2b-accent: #1f4e79;
+}
+
+body {
+  background: var(--o2b-paper);
+  color: var(--o2b-ink);
+  font-feature-settings: 'tnum' 0;
+}
+
+/* Importi: cifre tabulari, allineate a destra */
+.amount {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.code {
+  font-family: 'IBM Plex Mono', Consolas, monospace;
+  font-size: 0.85em;
+}
+
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:hover {
+  background: #f8fafb;
+}
+
+:focus-visible {
+  outline: 2px solid var(--o2b-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

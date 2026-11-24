@@ -1,0 +1,44 @@
+{
+  "name": "open2bill",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Fatturazione elettronica FatturaPA semplice: XML per l'Agenzia delle Entrate e PDF da template.",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "prepare": "git config core.hooksPath .githooks || exit 0",
+    "dev": "concurrently -k -n server,web -c blue,magenta \"npm:dev -w @open2bill/server\" \"npm:dev -w @open2bill/web\"",
+    "dev:example": "node scripts/dev-example.mjs",
+    "build": "npm run build -w @open2bill/web && npm run build -w @open2bill/server",
+    "start": "npm run start -w @open2bill/server",
+    "desktop": "npm run build -w @open2bill/web && npm run start -w @open2bill/desktop",
+    "dist:win": "npm run build -w @open2bill/web && npm run dist -w @open2bill/desktop",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "npm run build -w @open2bill/web && playwright test",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "guard": "node scripts/guard-private.mjs --all"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@playwright/test": "^1.65.0",
+    "@types/node": "^22.0.0",
+    "concurrently": "^10.0.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-react-hooks": "^7.0.0",
+    "globals": "^16.0.0",
+    "prettier": "^3.6.0",
+    "typescript": "~5.9.0",
+    "typescript-eslint": "^8.40.0",
+    "vitest": "^5.1.0"
+  }
+}

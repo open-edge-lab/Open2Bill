@@ -1,0 +1,179 @@
+/* Template PDF predefinito di Open2Bill.
+   Per personalizzarlo copia questa cartella in <cartella dati>/templates/<nome>
+   e imposta pdf.template: <nome> in issuer.yaml. */
+
+@page {
+  size: A4;
+  margin: 18mm 18mm 22mm 18mm;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Plex Sans', 'Segoe UI', Arial, sans-serif;
+  font-size: 9.5pt;
+  line-height: 1.45;
+  color: #1d232b;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* In anteprima a schermo il foglio si rimpicciolisce se la finestra è stretta */
+@media screen and (max-width: 880px) { html { zoom: .9; } }
+@media screen and (max-width: 790px) { html { zoom: .8; } }
+@media screen and (max-width: 700px) { html { zoom: .7; } }
+@media screen and (max-width: 610px) { html { zoom: .6; } }
+
+/* In anteprima a schermo simula il foglio A4 */
+@media screen {
+  html { background: #e9ebee; }
+  body {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 16px auto;
+    padding: 18mm;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 8px 24px rgba(0, 0, 0, .06);
+  }
+}
+
+.muted { color: #66707c; }
+.mono { font-family: 'Plex Mono', Consolas, monospace; font-size: 8.5pt; white-space: nowrap; }
+
+.eyebrow {
+  font-size: 7.5pt;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #66707c;
+  margin-bottom: 3pt;
+}
+
+/* ── Intestazione ─────────────────────────────── */
+.parties {
+  display: flex;
+  justify-content: space-between;
+  gap: 24pt;
+  margin-bottom: 26pt;
+}
+.issuer { flex: 1; color: #3b4350; }
+.issuer-name {
+  margin: 0 0 4pt;
+  font-size: 15pt;
+  font-weight: 600;
+  letter-spacing: .01em;
+  color: var(--accent);
+}
+.logo { max-height: 18mm; max-width: 60mm; margin-bottom: 8pt; display: block; }
+
+.customer {
+  width: 78mm;
+  margin-top: 30pt;
+  padding: 10pt 12pt;
+  border-left: 2pt solid var(--accent);
+  background: #f6f7f9;
+}
+.customer-name { font-size: 11pt; font-weight: 600; margin-bottom: 2pt; }
+
+/* ── Titolo documento ─────────────────────────── */
+.heading {
+  border-bottom: 1.5pt solid #1d232b;
+  padding-bottom: 6pt;
+  margin-bottom: 14pt;
+}
+.heading h2 { margin: 0; font-size: 13pt; font-weight: 600; }
+
+/* ── Righe ────────────────────────────────────── */
+table { border-collapse: collapse; width: 100%; }
+.lines th {
+  font-size: 7.5pt;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #66707c;
+  text-align: left;
+  padding: 0 0 5pt;
+  border-bottom: .75pt solid #c9ced5;
+}
+.lines td {
+  padding: 7pt 0;
+  vertical-align: top;
+  border-bottom: .5pt solid #e3e6ea;
+}
+.lines .num { text-align: right; white-space: nowrap; padding-left: 14pt; font-variant-numeric: tabular-nums; }
+.lines .narrow { width: 14mm; }
+.lines tr.expense td { color: #4a525e; }
+.lines tbody tr { break-inside: avoid; }
+
+.proforma-note {
+  margin: 18pt 0 0;
+  font-size: 12pt;
+  font-weight: 600;
+  font-style: italic;
+}
+.reason { margin: 14pt 0 0; color: #3b4350; }
+
+/* ── Riepilogo: pagamento + totali ────────────── */
+.summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24pt;
+  margin-top: 22pt;
+  break-inside: avoid;
+}
+.payment { flex: 1; padding-top: 2pt; }
+.payment dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2pt 10pt;
+  margin: 0;
+}
+.payment dt { color: #66707c; }
+.payment dd { margin: 0; }
+.note { margin: 8pt 0 0; font-size: 8.5pt; color: #4a525e; }
+
+.totals { width: 88mm; }
+.totals th, .totals td { padding: 3pt 0; font-weight: 400; }
+.totals th { text-align: left; color: #3b4350; }
+.totals td { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.totals tr.subtotal th, .totals tr.subtotal td { border-top: .75pt solid #c9ced5; }
+.totals tr.total th, .totals tr.total td {
+  border-top: 1.5pt solid #1d232b;
+  padding-top: 5pt;
+  font-weight: 600;
+  color: #1d232b;
+}
+.totals tr.net th, .totals tr.net td {
+  padding: 7pt 8pt;
+  font-size: 11pt;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+}
+.totals tr.net th { border-radius: 0; }
+
+/* ── Piè di pagina e filigrana ────────────────── */
+footer {
+  margin-top: 28pt;
+  font-size: 7.5pt;
+  color: #66707c;
+  border-top: .5pt solid #e3e6ea;
+  padding-top: 6pt;
+}
+
+.watermark {
+  position: fixed;
+  top: 45%;
+  left: 50%;
+  font-size: 66pt;
+  white-space: nowrap;
+  font-weight: 600;
+  letter-spacing: .08em;
+  color: rgba(29, 35, 43, .05);
+  transform: translate(-50%, -50%) rotate(-28deg);
+  pointer-events: none;
+  z-index: 0;
+}

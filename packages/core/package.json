@@ -1,0 +1,22 @@
+{
+  "name": "@open2bill/core",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./fatturapa": "./src/fatturapa/index.ts",
+    "./xsd": "./src/fatturapa/xsd.ts"
+  },
+  "scripts": {
+    "embed-schemas": "node scripts/embed-schemas.mjs",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "decimal.js": "^10.6.0",
+    "xmlbuilder2": "^4.0.0",
+    "xmllint-wasm": "^5.3.0",
+    "zod": "^4.0.0"
+  }
+}

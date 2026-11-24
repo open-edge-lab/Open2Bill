@@ -1,0 +1,14 @@
+# Cliente di esempio (FITTIZIO)
+kind: company                   # company | professional | individual
+companyName: Esempio Software S.r.l.
+vatCountry: IT
+vatNumber: "09876543217"
+taxCode: "09876543217"
+address:
+  street: Via delle Prove
+  streetNumber: "5"
+  postalCode: "40100"
+  city: Bologna
+  province: BO
+  country: IT
+recipientCode: ABC1234          # codice destinatario SdI (7 caratteri)

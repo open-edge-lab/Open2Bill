@@ -1,0 +1,9 @@
+node_modules
+dist
+dist-*
+release
+coverage
+package-lock.json
+packages/core/schemas
+packages/core/src/fatturapa/schemas.generated.ts
+*.hbs

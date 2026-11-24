@@ -1,0 +1,50 @@
+# ─────────────────────────────────────────────────────────────
+#  DATI REALI: MAI NEL REPOSITORY (repo pubblico)
+#  La cartella dati vera sta fuori dal repo (default: ~/Documents/Open2Bill).
+#  Queste regole sono una rete di sicurezza in più, insieme all'hook
+#  .githooks/pre-commit (scripts/guard-private.mjs).
+# ─────────────────────────────────────────────────────────────
+/data/
+output/
+documents/
+customers/
+/issuer.yaml
+/catalog.yaml
+/state.yaml
+*.local.yaml
+*.private.*
+.private-patterns
+.env
+.env.*
+!.env.example
+# unica eccezione: i dati FITTIZI di esempio
+!examples/data/customers/
+
+# Documenti fiscali generati (le fixture fittizie stanno in **/test/fixtures/)
+*.pdf
+*.p7m
+IT*_*.xml
+!**/test/fixtures/**
+
+# Dipendenze e build
+node_modules/
+dist/
+dist-*/
+release/
+out/
+*.tsbuildinfo
+.vite/
+coverage/
+playwright-report/
+test-results/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log
+
+# Strumenti di test locali
+.playwright-mcp/

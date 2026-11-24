@@ -1,0 +1,16 @@
+# Identificativi FITTIZI ammessi nel repository (esempi, test, documentazione).
+# Uno per riga. Aggiungi qui solo valori inventati, mai dati reali.
+
+# Emittente di esempio: Mario Rossi
+RSSMRA80A01H501U
+12345678903
+
+# Cliente di esempio: Esempio Software S.r.l.
+09876543217
+
+# Cliente di esempio: Laura Bianchi (privato / professionista)
+BNCLRA85M41F205C
+01122334459
+
+# IBAN di esempio (usato comunemente nella documentazione bancaria)
+IT60X0542811101000000123456

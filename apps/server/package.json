@@ -1,0 +1,34 @@
+{
+  "name": "@open2bill/server",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false src/main.ts",
+    "build": "tsup",
+    "start": "node dist/main.js",
+    "hash-password": "tsx src/cli/hash-password.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.1.0",
+    "@fastify/static": "^10.1.0",
+    "@open2bill/core": "*",
+    "decimal.js": "^10.6.0",
+    "fastify": "^5.12.0",
+    "handlebars": "^4.7.10",
+    "puppeteer-core": "^25.18.0",
+    "xmlbuilder2": "^4.0.0",
+    "xmllint-wasm": "^5.3.0",
+    "yaml": "^2.9.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "tsup": "^9.0.0",
+    "tsx": "^4.23.0"
+  }
+}

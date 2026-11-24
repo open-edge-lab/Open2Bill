@@ -1,0 +1,3 @@
+#!/bin/sh
+# Blocca il commit se contiene dati privati (vedi scripts/guard-private.mjs).
+exec node "$(git rev-parse --show-toplevel)/scripts/guard-private.mjs"

@@ -1,0 +1,14 @@
+# Cliente privato di esempio (FITTIZIO): niente ritenuta, consegna nell'area riservata
+kind: individual
+firstName: Laura
+lastName: Bianchi
+vatCountry: IT
+taxCode: BNCLRA85M41F205C
+address:
+  street: Via Verdi
+  streetNumber: "10"
+  postalCode: "20100"
+  city: Milano
+  province: MI
+  country: IT
+recipientCode: "0000000"

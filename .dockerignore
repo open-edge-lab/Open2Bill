@@ -1,0 +1,16 @@
+**/node_modules
+**/dist
+**/dist-*
+**/release
+.git
+.githooks
+.playwright-mcp
+test-results
+playwright-report
+coverage
+# mai dati reali nell'immagine
+data
+output
+.env
+.env.*
+**/*.pdf

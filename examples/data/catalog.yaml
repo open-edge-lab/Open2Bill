@@ -1,0 +1,20 @@
+# Voci ricorrenti (ESEMPIO). Si inseriscono nei documenti con "+ da catalogo".
+items:
+  - id: software-development
+    description: Progettazione e sviluppo software
+    unitPrice: 0
+    vatRate: 22
+    withholding: true
+    pensionFund: true
+  - id: consulting-hour
+    description: Consulenza
+    unit: ore
+    quantity: 1
+    unitPrice: 60
+    vatRate: 22
+    withholding: true
+    pensionFund: true
+  - id: travel-expenses
+    kind: passThroughExpense
+    description: Spese di trasferta anticipate in nome e per conto del cliente
+    unitPrice: 0

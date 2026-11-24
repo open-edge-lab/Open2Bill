@@ -1,0 +1,73 @@
+# ─────────────────────────────────────────────────────────────
+#  Dati dell'emittente (cedente/prestatore) — ESEMPIO FITTIZIO
+#  Copia la cartella examples/data come base per la tua cartella dati
+#  (default: Documenti/Open2Bill) e sostituisci i valori.
+#  Le chiavi sono in inglese, i commenti spiegano a cosa servono.
+# ─────────────────────────────────────────────────────────────
+
+# Persona fisica: firstName + lastName. Società: companyName.
+firstName: Mario
+lastName: Rossi
+# companyName: Rossi Consulting S.r.l.
+
+vatCountry: IT
+vatNumber: "12345678903"        # Partita IVA (tra virgolette: può iniziare con 0)
+taxCode: RSSMRA80A01H501U       # Codice fiscale
+taxRegime: RF01                 # RF01 ordinario, RF19 forfettario, …
+
+address:
+  street: Via Roma
+  streetNumber: "1"
+  postalCode: "00100"
+  city: Roma
+  province: RM
+  country: IT
+
+contacts:
+  email: mario.rossi@example.com
+  # pec: mario.rossi@pec.example.com
+  # phone: "0600000000"
+
+# Dati di pagamento proposti nei nuovi documenti
+payment:
+  method: MP05                  # MP05 = bonifico
+  terms: TP02                   # TP02 = pagamento completo
+  bankName: Banca Esempio
+  iban: IT60X0542811101000000123456
+  dueDays: 30                   # scadenza a N giorni dalla data documento
+
+# Valori proposti automaticamente nei nuovi documenti
+defaults:
+  vatRate: 22
+  # Rivalsa INPS gestione separata 4% (soggetta a ritenuta). Togli il blocco se non serve.
+  pensionFund:
+    type: TC22                  # TC22 = INPS
+    rate: 4
+    vatRate: 22
+    withholding: true
+    label: "Contrib. INPS – gest. separata 4%"
+    # true = i prezzi che scrivi nelle righe comprendono già il 4% (si scorpora sul totale)
+    pricesIncludeContribution: false
+  # Ritenuta d'acconto 20% (persone fisiche, causale A). Togli il blocco se non serve.
+  withholding:
+    type: RT01
+    rate: 20
+    paymentReason: A
+  stampDuty:
+    amount: 2
+    chargeToCustomer: true      # addebita il bollo al cliente come spesa esclusa art. 15
+
+# Numerazione: {n} numero, {n:3} con zeri (001), {yyyy} anno, {yy} anno a 2 cifre
+numbering:
+  invoice: "{n}"
+  creditNote: "NC{n}"
+  proforma: "PF{n}"
+  pdfFileName: "{year}-{type}-{number}_{customer}"
+
+# Aspetto del PDF
+pdf:
+  template: default             # oppure il nome di una cartella in templates/
+  accentColor: "#1f4e79"
+  # logo: logo.png              # percorso relativo a questa cartella
+  # footer: "Testo libero in fondo alla pagina"
+  labels: {}                    # es. servicesTotal: "Imponibile Irpef"

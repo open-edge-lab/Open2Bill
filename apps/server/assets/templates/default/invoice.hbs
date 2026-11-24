@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>{{heading}}</title>
+<style>
+{{{fontCss}}}
+:root { --accent: {{accentColor}}; }
+{{{css}}}
+</style>
+</head>
+<body>
+{{#if isDraft}}<div class="watermark">BOZZA</div>{{else}}{{#if isProforma}}<div class="watermark">PRO FORMA</div>{{/if}}{{/if}}
+
+<header class="parties">
+  <section class="issuer">
+    {{#if logo}}<img class="logo" src="{{logo}}" alt="">{{/if}}
+    <h1 class="issuer-name">{{issuer.name}}</h1>
+    {{#each issuer.addressLines}}<div>{{this}}</div>{{/each}}
+    {{#each issuer.taxLines}}<div>{{this}}</div>{{/each}}
+    {{#each issuer.contactLines}}<div class="muted">{{this}}</div>{{/each}}
+    {{#if issuer.taxRegime}}<div class="muted">{{issuer.taxRegime}}</div>{{/if}}
+  </section>
+
+  <section class="customer">
+    <div class="eyebrow">{{labels.recipient}}</div>
+    <div class="customer-name">{{customer.name}}</div>
+    {{#each customer.addressLines}}<div>{{this}}</div>{{/each}}
+    {{#each customer.taxLines}}<div>{{this}}</div>{{/each}}
+  </section>
+</header>
+
+<div class="heading">
+  <h2>{{heading}}</h2>
+  {{#if linkedInvoiceNote}}<div class="muted">{{linkedInvoiceNote}}</div>{{/if}}
+</div>
+
+<table class="lines">
+  <thead>
+    <tr>
+      <th class="desc">{{labels.description}}</th>
+      {{#if showQuantity}}
+      <th class="num">{{labels.quantity}}</th>
+      <th class="num">{{labels.unitPrice}}</th>
+      {{/if}}
+      <th class="num narrow">{{labels.vat}}</th>
+      <th class="num">{{labels.amount}}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{#each lines}}
+    <tr{{#if isExpense}} class="expense"{{/if}}>
+      <td class="desc">{{nl2br description}}</td>
+      {{#if ../showQuantity}}
+      <td class="num">{{quantity}}</td>
+      <td class="num">{{unitPrice}}</td>
+      {{/if}}
+      <td class="num narrow">{{vat}}</td>
+      <td class="num">€ {{total}}</td>
+    </tr>
+    {{/each}}
+  </tbody>
+</table>
+
+{{#if isProforma}}<p class="proforma-note">{{labels.proformaNote}}</p>{{/if}}
+
+{{#if reason}}<p class="reason">{{nl2br reason}}</p>{{/if}}
+
+<section class="summary">
+  <div class="payment">
+    {{#if payment}}
+    <div class="eyebrow">{{labels.paymentTitle}}</div>
+    <dl>
+      <dt>Modalità</dt><dd>{{payment.method}}</dd>
+      {{#if payment.dueDate}}<dt>{{labels.dueDate}}</dt><dd>{{payment.dueDate}}</dd>{{/if}}
+      {{#if payment.beneficiary}}<dt>Beneficiario</dt><dd>{{payment.beneficiary}}</dd>{{/if}}
+      {{#if payment.bankName}}<dt>{{labels.bank}}</dt><dd>{{payment.bankName}}</dd>{{/if}}
+      {{#if payment.iban}}<dt>{{labels.iban}}</dt><dd class="mono">{{payment.iban}}</dd>{{/if}}
+    </dl>
+    {{/if}}
+    {{#each natureNotes}}<p class="note">{{this}}</p>{{/each}}
+    {{#if notes}}<p class="note">{{nl2br notes}}</p>{{/if}}
+  </div>
+
+  <table class="totals">
+    {{#each totalsRows}}
+    <tr class="{{kind}}">
+      <th>{{label}}</th>
+      <td>€ {{value}}</td>
+    </tr>
+    {{/each}}
+  </table>
+</section>
+
+{{#if hasFooter}}
+<footer>
+  {{#if stampDutyNote}}<div>{{stampDutyNote}}</div>{{/if}}
+  {{#if footer}}<div>{{footer}}</div>{{/if}}
+</footer>
+{{/if}}
+</body>
+</html>

@@ -1,0 +1,13 @@
+# Esempio di docker compose per il web self-hosted.
+# Copialo in docker-compose.yml sul server e crea un file .env (non versionato) con:
+#   O2B_PASSWORD_HASH=...   (npm run hash-password -w @open2bill/server)
+#   O2B_SESSION_SECRET=...  (una stringa casuale lunga)
+services:
+  open2bill:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:3210:3210"   # esposto solo in locale: davanti c'è nginx con HTTPS
+    volumes:
+      - ./open2bill-data:/data   # cartella dati reale (fai il backup!)
