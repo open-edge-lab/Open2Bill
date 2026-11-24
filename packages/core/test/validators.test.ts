@@ -43,6 +43,16 @@ describe('validatori', () => {
     expect(IssuerSchema.shape.vatNumber.parse('IT09876543217')).toBe('09876543217');
   });
 
+  it('colore del PDF: solo esadecimale (finisce nel CSS del template)', () => {
+    const pdf = IssuerSchema.shape.pdf;
+    expect(pdf.parse({ accentColor: '#1F4E79' }).accentColor).toBe('#1F4E79');
+    expect(pdf.parse({ accentColor: '#abc' }).accentColor).toBe('#abc');
+    expect(pdf.parse({}).accentColor).toBe('#1f4e79');
+    for (const bad of ['red', '#1f4e79; } body { background: url(http://example.com/x) }', 'url(x)', '#12345']) {
+      expect(pdf.safeParse({ accentColor: bad }).success).toBe(false);
+    }
+  });
+
   it('codice fiscale persona fisica e numerico', () => {
     expect(isValidTaxCode('RSSMRA80A01H501U')).toBe(true);
     expect(isValidTaxCode('rssmra80a01h501u')).toBe(true);

@@ -1,4 +1,6 @@
 import fs from 'node:fs/promises';
+import http from 'node:http';
+import type { AddressInfo } from 'node:net';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { DocumentSchema, calculateTotals } from '@open2bill/core';
@@ -53,6 +55,31 @@ describe.skipIf(!browser)('PDF reale (puppeteer-core)', () => {
       }
     } finally {
       await engine.close();
+    }
+  });
+
+  it('non fa richieste di rete né esegue script durante la stampa (SSRF)', async () => {
+    const hits: string[] = [];
+    const server = http.createServer((req, res) => {
+      hits.push(req.url ?? '');
+      res.end('x');
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const { port } = server.address() as AddressInfo;
+    const base = `http://127.0.0.1:${port}`;
+    const html = `<!doctype html><html><head>
+      <link rel="stylesheet" href="${base}/style.css">
+      <style>body { background: url(${base}/background.png); }</style>
+      </head><body><p>Documento di prova</p><img src="${base}/image.png">
+      <script>fetch('${base}/script')</script></body></html>`;
+    const engine = new PuppeteerPdfEngine();
+    try {
+      const pdf = await engine.render(html);
+      expect(Buffer.from(pdf.subarray(0, 5)).toString()).toBe('%PDF-');
+      expect(hits).toEqual([]);
+    } finally {
+      await engine.close();
+      server.close();
     }
   });
 });

@@ -56,6 +56,16 @@ export class PuppeteerPdfEngine implements PdfEngine {
     const browser = await this.getBrowser();
     const page = await browser.newPage();
     try {
+      // Il documento è autosufficiente (font e logo incorporati come data: URL): niente
+      // script e nessuna richiesta di rete, così un template o un dato malevolo non può
+      // far contattare al browser indirizzi esterni o della rete interna (SSRF).
+      await page.setJavaScriptEnabled(false);
+      await page.setRequestInterception(true);
+      page.on('request', (request) => {
+        const url = request.url();
+        if (url.startsWith('data:') || url === 'about:blank') void request.continue();
+        else void request.abort('blockedbyclient');
+      });
       await page.emulateMediaType('print');
       await page.setContent(html, { waitUntil: 'load' });
       await page.evaluate('document.fonts.ready');

@@ -145,7 +145,12 @@ export const IssuerSchema = z
         template: z.string().default('default'),
         /** Percorso del logo relativo alla cartella dati. */
         logo: optionalText,
-        accentColor: z.string().default('#1f4e79'),
+        // Finisce nel CSS del template: solo colori esadecimali, niente testo arbitrario
+        accentColor: z
+          .string()
+          .trim()
+          .regex(/^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i, 'Colore non valido: usa il formato #1f4e79')
+          .default('#1f4e79'),
         footer: optionalText,
         /** Etichette personalizzabili del blocco totali (vedi DEFAULT_PDF_LABELS). */
         labels: z.record(z.string(), z.string()).default({}),
