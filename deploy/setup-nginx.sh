@@ -11,7 +11,8 @@ export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 APP_DIR=${APP_DIR:-/opt/open2bill}
 APPS_DIR=/etc/nginx/apps-enabled
 
-if ! grep -rqs "include /etc/nginx/apps-enabled/\*.conf" /etc/nginx/sites-enabled/; then
+# -R e non -r: in sites-enabled di solito ci sono symlink, che -r non segue.
+if ! grep -Rqs "include /etc/nginx/apps-enabled/\*.conf" /etc/nginx/sites-enabled/; then
   echo "nessun server block include $APPS_DIR/*.conf: configura prima il server 443 condiviso" >&2
   exit 1
 fi
