@@ -123,7 +123,15 @@ function IssuerForm({ initial, isFirstRun }: { initial: IssuerInput; isFirstRun:
       form.resetDirty();
       await qc.invalidateQueries({ queryKey: keys.issuer });
       await qc.invalidateQueries({ queryKey: keys.app });
-      notifications.show({ message: 'Dati dell’emittente salvati in issuer.yaml.', color: 'stamp' });
+      const drafts = res.updatedDrafts ?? 0;
+      if (drafts > 0) await qc.invalidateQueries({ queryKey: keys.documents });
+      notifications.show({
+        message:
+          drafts > 0
+            ? `Dati dell’emittente salvati. Nuova banca anche in ${drafts === 1 ? '1 bozza' : `${drafts} bozze`}.`
+            : 'Dati dell’emittente salvati in issuer.yaml.',
+        color: 'stamp',
+      });
     } catch (err) {
       if (err instanceof ApiError) {
         form.setErrors(Object.fromEntries(err.issues.map((i) => [i.path, i.message])));

@@ -48,8 +48,8 @@ export function registerApiRoutes(app: FastifyInstance, ctx: ApiContext): void {
   });
 
   app.put('/api/issuer', async (req) => {
-    const issuer = await store.saveIssuer(req.body);
-    return { issuer, issues: validateIssuer(issuer) };
+    const { issuer, updatedDrafts, issues } = await documents.saveIssuer(req.body);
+    return { issuer, issues: [...validateIssuer(issuer), ...issues], updatedDrafts };
   });
 
   // ── Clienti ────────────────────────────────────────────────

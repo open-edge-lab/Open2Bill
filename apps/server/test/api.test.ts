@@ -226,6 +226,49 @@ describe('API documenti', () => {
   });
 });
 
+describe('banca dell’emittente nelle bozze', () => {
+  it('cambiando la banca, le bozze con la banca di prima la aggiornano; le altre no', async () => {
+    const s = await makeTestServer();
+    const inject = (method: 'GET' | 'POST' | 'PUT', url: string, payload?: unknown) =>
+      s.app.inject({ method, url, payload: payload as object | undefined });
+    const newDraft = async (overrides: Record<string, unknown> = {}) => {
+      const tpl = (await inject('GET', '/api/documents/new?customerId=esempio-software-s-r-l')).json();
+      const res = await inject('POST', '/api/documents', { ...tpl, lines: goldenLines, ...overrides });
+      expect(res.statusCode).toBe(201);
+      return res.json().document as { id: string; payment: Record<string, unknown> };
+    };
+    const paymentOf = async (id: string) => (await inject('GET', `/api/documents/${id}`)).json().document.payment;
+    try {
+      const followsDefault = await newDraft();
+      const tpl = (await inject('GET', '/api/documents/new')).json();
+      const customBank = await newDraft({ payment: { ...tpl.payment, bankName: 'Banca scelta a mano', iban: 'IT00C0000000000000000000000' } });
+      const noPayment = await newDraft({ payment: null });
+      const toIssue = await newDraft();
+      const issued = (await inject('POST', `/api/documents/${toIssue.id}/issue`)).json().document;
+
+      const { issuer } = (await inject('GET', '/api/issuer')).json();
+      const newBank = { bankName: 'Banca Nuova', iban: 'IT00A0000000000000000000000' };
+      const saved = await inject('PUT', '/api/issuer', { ...issuer, payment: { ...issuer.payment, ...newBank } });
+      expect(saved.statusCode).toBe(200);
+      expect(saved.json().updatedDrafts).toBe(1);
+
+      expect(await paymentOf(followsDefault.id)).toMatchObject({ ...newBank, method: 'MP05', dueDate: followsDefault.payment.dueDate });
+      expect(await paymentOf(customBank.id)).toMatchObject({ bankName: 'Banca scelta a mano' });
+      expect(await paymentOf(noPayment.id)).toBeNull();
+      expect(await paymentOf(issued.id)).toMatchObject({ bankName: 'Banca Esempio', iban: 'IT60X0542811101000000123456' });
+      // i nuovi documenti partono già con la banca nuova
+      expect((await inject('GET', '/api/documents/new')).json().payment).toMatchObject(newBank);
+
+      // salvare di nuovo senza cambiare banca non tocca niente
+      const again = await inject('PUT', '/api/issuer', { ...issuer, payment: { ...issuer.payment, ...newBank } });
+      expect(again.json().updatedDrafts).toBe(0);
+    } finally {
+      await s.app.close();
+      await fs.rm(s.dataDir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('autenticazione', () => {
   it('modalità password: 401 senza sessione, login, accesso', async () => {
     const s = await makeTestServer({

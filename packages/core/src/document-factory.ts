@@ -76,6 +76,34 @@ export function newDocument(
   };
 }
 
+// ── Dati bancari ─────────────────────────────────────────────
+// Il documento copia banca, IBAN e beneficiario dall'emittente quando nasce. Se poi
+// cambiano in Impostazioni, le bozze che avevano quelli di prima li aggiornano;
+// nell'editor si possono riprendere anche a mano.
+
+export interface BankDetails {
+  bankName?: string;
+  iban?: string;
+  beneficiary?: string;
+}
+
+const comparableIban = (iban?: string) => (iban ?? '').replace(/\s+/g, '').toUpperCase();
+const comparableText = (text?: string) => (text ?? '').trim();
+
+/** Stessa banca, stesso IBAN (spazi e maiuscole a parte) e stesso beneficiario. */
+export function sameBankDetails(a: BankDetails | null | undefined, b: BankDetails | null | undefined): boolean {
+  return (
+    comparableIban(a?.iban) === comparableIban(b?.iban) &&
+    comparableText(a?.bankName) === comparableText(b?.bankName) &&
+    comparableText(a?.beneficiary) === comparableText(b?.beneficiary)
+  );
+}
+
+/** Il pagamento con banca, IBAN e beneficiario presi da `from`; il resto non cambia. */
+export function withBankDetails<T extends BankDetails>(payment: T, from: BankDetails): T {
+  return { ...payment, bankName: from.bankName, iban: from.iban, beneficiary: from.beneficiary };
+}
+
 export function emptyCustomer(): CustomerData {
   return {
     kind: 'company',

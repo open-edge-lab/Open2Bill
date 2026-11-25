@@ -37,8 +37,10 @@ import {
   documentNumberFor,
   reverseCalculation,
   reverseCalculationAll,
+  sameBankDetails,
   seriesFor,
   validateDocument,
+  withBankDetails,
   type Customer,
   type Document,
   type DocumentKind,
@@ -336,6 +338,26 @@ export function DocumentEditor({ initial, isNew }: { initial: Document; isNew: b
     form.setFieldValue(key, defaults[key] as never);
   }
 
+  // Banca diversa da quella delle Impostazioni: bozza creata prima di un cambio con una banca
+  // scelta a mano, documento duplicato, oppure editor aperto da prima del cambio.
+  const issuerBank = issuer?.payment;
+  const bankDiffers = Boolean(
+    values.payment && issuerBank && (issuerBank.iban || issuerBank.bankName) && !sameBankDetails(values.payment, issuerBank),
+  );
+  const issuerBankLabel = [issuerBank?.bankName, issuerBank?.iban && `IBAN ${issuerBank.iban}`].filter(Boolean).join(', ');
+  function applyIssuerBank() {
+    const payment = form.getValues().payment;
+    if (!payment || !issuerBank) return;
+    form.setFieldValue(
+      'payment',
+      withBankDetails(payment, {
+        bankName: issuerBank.bankName ?? '',
+        iban: issuerBank.iban ?? '',
+        beneficiary: issuerBank.beneficiary ?? '',
+      }),
+    );
+  }
+
   if (issuerQ.error) {
     return (
       <Alert color="yellow" title="Mancano i dati dell’emittente">
@@ -540,26 +562,38 @@ export function DocumentEditor({ initial, isNew }: { initial: Document; isNew: b
               aside={<Switch checked={values.payment !== null} onChange={(e) => toggle('payment', e.currentTarget.checked)} aria-label="Indica il pagamento" />}
             >
               {values.payment ? (
-                <Grid gutter="sm">
-                  <Grid.Col span={{ base: 12, sm: 6 }}>
-                    <Select label="Modalità" data={codeOptions(PAYMENT_METHODS)} allowDeselect={false} searchable {...form.getInputProps('payment.method')} />
-                  </Grid.Col>
-                  <Grid.Col span={{ base: 12, sm: 6 }}>
-                    <Select label="Condizioni" data={codeOptions(PAYMENT_TERMS)} allowDeselect={false} {...form.getInputProps('payment.terms')} />
-                  </Grid.Col>
-                  <Grid.Col span={{ base: 12, sm: 4 }}>
-                    <DateInput label="Scadenza" valueFormat="DD/MM/YYYY" clearable {...form.getInputProps('payment.dueDate')} />
-                  </Grid.Col>
-                  <Grid.Col span={{ base: 12, sm: 8 }}>
-                    <TextInput label="IBAN" {...form.getInputProps('payment.iban')} />
-                  </Grid.Col>
-                  <Grid.Col span={{ base: 12, sm: 6 }}>
-                    <TextInput label="Banca" {...form.getInputProps('payment.bankName')} />
-                  </Grid.Col>
-                  <Grid.Col span={{ base: 12, sm: 6 }}>
-                    <TextInput label="Beneficiario" placeholder="Se diverso dall’emittente" {...form.getInputProps('payment.beneficiary')} />
-                  </Grid.Col>
-                </Grid>
+                <Stack gap="sm">
+                  {bankDiffers && issuerBank && (
+                    <Alert color="ink" p="sm">
+                      <Group justify="space-between" gap="sm">
+                        <Text size="sm">Banca diversa da quella delle Impostazioni: {issuerBankLabel}</Text>
+                        <Button size="xs" variant="light" onClick={applyIssuerBank}>
+                          Usa quella delle Impostazioni
+                        </Button>
+                      </Group>
+                    </Alert>
+                  )}
+                  <Grid gutter="sm">
+                    <Grid.Col span={{ base: 12, sm: 6 }}>
+                      <Select label="Modalità" data={codeOptions(PAYMENT_METHODS)} allowDeselect={false} searchable {...form.getInputProps('payment.method')} />
+                    </Grid.Col>
+                    <Grid.Col span={{ base: 12, sm: 6 }}>
+                      <Select label="Condizioni" data={codeOptions(PAYMENT_TERMS)} allowDeselect={false} {...form.getInputProps('payment.terms')} />
+                    </Grid.Col>
+                    <Grid.Col span={{ base: 12, sm: 4 }}>
+                      <DateInput label="Scadenza" valueFormat="DD/MM/YYYY" clearable {...form.getInputProps('payment.dueDate')} />
+                    </Grid.Col>
+                    <Grid.Col span={{ base: 12, sm: 8 }}>
+                      <TextInput label="IBAN" {...form.getInputProps('payment.iban')} />
+                    </Grid.Col>
+                    <Grid.Col span={{ base: 12, sm: 6 }}>
+                      <TextInput label="Banca" {...form.getInputProps('payment.bankName')} />
+                    </Grid.Col>
+                    <Grid.Col span={{ base: 12, sm: 6 }}>
+                      <TextInput label="Beneficiario" placeholder="Se diverso dall’emittente" {...form.getInputProps('payment.beneficiary')} />
+                    </Grid.Col>
+                  </Grid>
+                </Stack>
               ) : (
                 <Text size="sm" c="dimmed">
                   Nessun dato di pagamento nel documento.

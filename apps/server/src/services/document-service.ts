@@ -11,9 +11,11 @@ import {
   issuedDocumentId,
   newDocument,
   proformaToInvoice,
+  sameBankDetails,
   slugify,
   todayIso,
   validateDocument,
+  withBankDetails,
   type Document,
   type DocumentKind,
   type Issuer,
@@ -73,6 +75,39 @@ export class DocumentService {
 
   private today(): string {
     return todayIso();
+  }
+
+  // ── Emittente ──────────────────────────────────────────────
+  /**
+   * Salva i dati dell'emittente. Se cambiano banca, IBAN o beneficiario, le bozze che avevano
+   * quelli di prima li prendono nuovi: erano i predefiniti copiati alla creazione. Le bozze
+   * con una banca scelta a mano e i documenti emessi restano come sono.
+   */
+  async saveIssuer(input: unknown): Promise<{ issuer: Issuer; updatedDrafts: number; issues: ValidationIssue[] }> {
+    return this.lock.run(async () => {
+      const previous = (await this.store.hasIssuer()) ? await this.store.getIssuer().catch(() => null) : null;
+      const issuer = await this.store.saveIssuer(input);
+      if (!previous || sameBankDetails(previous.payment, issuer.payment)) return { issuer, updatedDrafts: 0, issues: [] };
+
+      let updatedDrafts = 0;
+      try {
+        for (const doc of await this.store.listDocuments()) {
+          if (doc.status !== 'draft' || !doc.payment || !sameBankDetails(doc.payment, previous.payment)) continue;
+          await this.store.saveDocument({ ...doc, payment: withBankDetails(doc.payment, issuer.payment) });
+          updatedDrafts++;
+        }
+      } catch (err) {
+        // I dati dell'emittente sono già salvati: si segnala solo che le bozze non sono state aggiornate tutte.
+        const reason = err instanceof Error ? err.message : String(err);
+        const issue: ValidationIssue = {
+          path: 'payment',
+          severity: 'warning',
+          message: `Banca non aggiornata in tutte le bozze (${updatedDrafts} aggiornate): ${reason}`,
+        };
+        return { issuer, updatedDrafts, issues: [issue] };
+      }
+      return { issuer, updatedDrafts, issues: [] };
+    });
   }
 
   // ── Bozze ──────────────────────────────────────────────────

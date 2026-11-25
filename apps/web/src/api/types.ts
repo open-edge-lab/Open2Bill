@@ -18,6 +18,8 @@ export interface AuthStatus {
 export interface IssuerResponse {
   issuer: Issuer;
   issues: ValidationIssue[];
+  /** Bozze che hanno preso la nuova banca (solo dopo un salvataggio). */
+  updatedDrafts?: number;
 }
 
 export interface DocumentDetails {
