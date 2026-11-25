@@ -30,7 +30,7 @@ import {
   type IssuerInput,
 } from '@open2bill/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ApiError, api, errorMessage } from '../api/client';
 import { keys, useAppInfo, useAuthStatus, useIssuer } from '../api/hooks';
 import type { IssuerResponse } from '../api/types';
@@ -97,6 +97,16 @@ function IssuerForm({ initial, isFirstRun }: { initial: IssuerInput; isFirstRun:
   const v = form.getValues();
   const [personKind, setPersonKind] = useState<'person' | 'company'>(initial.companyName ? 'company' : 'person');
   const [response, setResponse] = useState<IssuerResponse | null>(null);
+
+  // I dati salvati arrivano di nuovo dal server anche solo tornando su questa finestra.
+  // Il modulo li riprende (dopo un salvataggio o una modifica a mano di issuer.yaml) solo se
+  // non ci sono modifiche in corso: quello che si sta scrivendo non va mai cancellato.
+  useEffect(() => {
+    if (form.isDirty()) return;
+    form.setInitialValues(initial);
+    form.setValues(initial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `form` cambia identità a ogni render
+  }, [initial]);
   const [busy, setBusy] = useState(false);
 
   async function submit(values: IssuerInput) {
@@ -382,6 +392,10 @@ export function SettingsPage() {
   const app = useAppInfo();
   const auth = useAuthStatus();
   const issuer = useIssuer(Boolean(app.data?.hasIssuer));
+  // Stesso oggetto finché i dati non cambiano davvero (React Query riusa i dati identici),
+  // così ricaricarli senza novità non tocca il modulo.
+  const savedIssuer = issuer.data?.issuer as IssuerInput | undefined;
+  const initialIssuer = useMemo(() => withEmptyStrings(savedIssuer ?? {}), [savedIssuer]);
   const [templateMsg, setTemplateMsg] = useState<string | null>(null);
 
   async function customizeTemplate() {
@@ -422,8 +436,7 @@ export function SettingsPage() {
 
       {app.data && (!app.data.hasIssuer || issuer.data) && (
         <IssuerForm
-          key={issuer.dataUpdatedAt}
-          initial={withEmptyStrings((issuer.data?.issuer as IssuerInput | undefined) ?? {})}
+          initial={initialIssuer}
           isFirstRun={!app.data.hasIssuer}
         />
       )}

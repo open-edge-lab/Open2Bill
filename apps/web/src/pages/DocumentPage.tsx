@@ -37,7 +37,9 @@ export function DocumentPage() {
       </Center>
     );
   }
-  if (query.error) {
+  // Solo se non c'è niente da mostrare: se fallisce un ricaricamento (es. al ritorno sulla
+  // finestra, con il server irraggiungibile) l'editor resta aperto con le modifiche in corso.
+  if (query.error && !query.data) {
     return (
       <Alert color="red" title="Documento non disponibile">
         {errorMessage(query.error)}
