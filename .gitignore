@@ -11,6 +11,8 @@ customers/
 /issuer.yaml
 /catalog.yaml
 /state.yaml
+# hash della password cambiata dall'interfaccia, in qualunque cartella dati
+auth.yaml
 *.local.yaml
 *.private.*
 .private-patterns

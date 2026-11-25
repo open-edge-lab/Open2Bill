@@ -52,7 +52,8 @@ git ls-files -z -co --exclude-standard | tar czf - --null -T - --ignore-failed-r
 
 La prima volta `demo-data/` si crea dalla copia di `examples/data`; gli aggiornamenti non la
 toccano. Per azzerare la demo: `rm -rf demo-data && cp -r examples/data demo-data` e riavvia il
-container.
+container. Si azzera anche la password, se era stata cambiata dall'interfaccia (sta in
+`demo-data/auth.yaml`): torna quella di `.env`.
 
 nginx, solo la prima volta o se cambia `deploy/nginx/open2bill.conf`:
 

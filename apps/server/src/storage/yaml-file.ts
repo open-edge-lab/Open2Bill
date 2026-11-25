@@ -32,10 +32,14 @@ export async function readYaml(file: string): Promise<unknown> {
 }
 
 /** Scrittura atomica: file temporaneo + rename, per non lasciare file a metà. */
-export async function writeFileAtomic(file: string, content: string | Uint8Array): Promise<void> {
+export async function writeFileAtomic(
+  file: string,
+  content: string | Uint8Array,
+  options: { mode?: number } = {},
+): Promise<void> {
   await fs.mkdir(path.dirname(file), { recursive: true });
   const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
-  await fs.writeFile(tmp, content);
+  await fs.writeFile(tmp, content, { mode: options.mode });
   await fs.rename(tmp, file);
 }
 

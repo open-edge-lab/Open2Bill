@@ -2,6 +2,7 @@ import path from 'node:path';
 
 // Struttura della cartella dati (vedi README):
 //   issuer.yaml, catalog.yaml, state.yaml
+//   auth.yaml (solo web self-hosted, se la password è stata cambiata dall'interfaccia)
 //   customers/<id>.yaml
 //   documents/drafts/<id>.yaml, documents/<anno>/<id>.yaml
 //   output/<anno>/<file xml e pdf>
@@ -18,6 +19,9 @@ export class DataPaths {
   }
   get state() {
     return path.join(this.root, 'state.yaml');
+  }
+  get auth() {
+    return path.join(this.root, 'auth.yaml');
   }
   get customersDir() {
     return path.join(this.root, 'customers');

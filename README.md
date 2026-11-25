@@ -31,6 +31,7 @@ catalog.yaml          # voci ricorrenti
 documents/<anno>/     # documenti emessi (documents/drafts/ per le bozze)
 output/<anno>/        # XML da caricare sul SdI e PDF
 templates/<nome>/     # template PDF personalizzati (facoltativo)
+auth.yaml             # solo web: password cambiata da Impostazioni (hash, non in chiaro)
 ```
 
 `examples/data/` contiene una cartella dati **fittizia** da usare come modello. Il repository ha

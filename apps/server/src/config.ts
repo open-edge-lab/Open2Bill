@@ -9,7 +9,9 @@ import type { AuthConfig } from './auth';
 //   O2B_DATA_DIR        cartella dati (default: ~/Documents/Open2Bill)
 //   O2B_HOST, O2B_PORT  indirizzo di ascolto (default: 127.0.0.1:3210)
 //   O2B_WEB_DIR         build della UI (default: apps/web/dist)
-//   O2B_PASSWORD_HASH   abilita il login (genera l'hash con: npm run hash-password -w @open2bill/server)
+//   O2B_PASSWORD_HASH   abilita il login (genera l'hash con: npm run hash-password -w @open2bill/server).
+//                       Se la password si cambia da Impostazioni vale quella salvata in auth.yaml,
+//                       finché O2B_PASSWORD_HASH non cambia (vedi password-file.ts).
 //   O2B_SESSION_SECRET  segreto per firmare i cookie di sessione
 //   O2B_AUTH=none       disattiva il login (ammesso solo su indirizzi locali)
 //   O2B_TRUST_PROXY=1   dietro nginx/HTTPS

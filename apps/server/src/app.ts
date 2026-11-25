@@ -63,7 +63,7 @@ export async function createServer(options: ServerOptions): Promise<Open2BillSer
 
   await app.register(fastifyCookie);
   registerRequestGuards(app, { localOnly: options.localOnly ?? true });
-  registerAuth(app, options.auth ?? { mode: 'none' });
+  await registerAuth(app, options.auth ?? { mode: 'none' }, { passwordFile: store.paths.auth });
 
   app.setErrorHandler((err: FastifyError | Error, _req, reply) => {
     if (err instanceof ValidationFailedError) {

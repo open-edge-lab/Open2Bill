@@ -17,6 +17,11 @@ O2B_PASSWORD_HASH=scrypt$...
 O2B_SESSION_SECRET=<stringa casuale lunga, es. openssl rand -base64 48>
 ```
 
+Dopo il primo accesso puoi cambiare la password da **Impostazioni → Password di accesso**: il
+nuovo hash si salva in `auth.yaml` nella cartella dati e gli altri dispositivi devono accedere
+di nuovo. Se la dimentichi, genera un nuovo `O2B_PASSWORD_HASH` e riavvia il container: vale di
+nuovo quello e `auth.yaml` viene ignorato (puoi anche cancellarlo).
+
 ## 2. Avvio con Docker
 
 ```bash

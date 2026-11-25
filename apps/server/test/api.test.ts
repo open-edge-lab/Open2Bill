@@ -253,6 +253,83 @@ describe('autenticazione', () => {
     }
   });
 
+  it('cambio password: chiede la attuale, chiude le altre sessioni, resta dopo il riavvio', async () => {
+    const auth = { mode: 'password', passwordHash: hashPassword('password-di-prova'), sessionSecret: 'segreto-test' } as const;
+    const s = await makeTestServer({ auth });
+    const login = (server: Server, password: string) =>
+      server.app.inject({ method: 'POST', url: '/api/auth/login', payload: { password } });
+    const sessionOf = (res: Awaited<ReturnType<typeof login>>) =>
+      res.cookies.find((c) => c.name === 'o2b_session')?.value ?? '';
+    const change = (session: string | null, payload: object) =>
+      s.app.inject({
+        method: 'POST',
+        url: '/api/auth/password',
+        payload,
+        cookies: session ? { o2b_session: session } : {},
+      });
+    const issuerWith = (session: string) =>
+      s.app.inject({ method: 'GET', url: '/api/issuer', cookies: { o2b_session: session } });
+    const authFile = path.join(s.dataDir, 'auth.yaml');
+    try {
+      const mine = sessionOf(await login(s, 'password-di-prova'));
+      const otherDevice = sessionOf(await login(s, 'password-di-prova'));
+      const valid = { currentPassword: 'password-di-prova', newPassword: 'nuova-password-123' };
+
+      expect((await change(null, valid)).statusCode).toBe(401);
+      const wrong = await change(mine, { ...valid, currentPassword: 'sbagliata' });
+      expect(wrong.statusCode).toBe(403);
+      expect(wrong.json().error).toBe('invalid_password');
+      await new Promise((r) => setTimeout(r, 1100)); // fine del blocco dopo l'errore
+      const short = await change(mine, { ...valid, newPassword: 'corta' });
+      expect(short.statusCode).toBe(400);
+      expect(short.json().error).toBe('weak_password');
+      await expect(fs.access(authFile)).rejects.toThrow();
+
+      const ok = await change(mine, valid);
+      expect(ok.statusCode).toBe(200);
+      // chi l'ha cambiata resta dentro con il cookie nuovo; le sessioni di prima si chiudono
+      expect((await issuerWith(sessionOf(ok))).statusCode).toBe(200);
+      expect((await issuerWith(mine)).statusCode).toBe(401);
+      expect((await issuerWith(otherDevice)).statusCode).toBe(401);
+      expect((await login(s, 'nuova-password-123')).statusCode).toBe(200);
+      expect((await login(s, 'password-di-prova')).statusCode).toBe(401);
+
+      const saved = await fs.readFile(authFile, 'utf8');
+      expect(saved).toContain('scrypt$');
+      expect(saved).not.toContain('nuova-password-123');
+    } finally {
+      await s.app.close();
+    }
+
+    try {
+      // al riavvio vale la password nuova
+      const restarted = await makeTestServer({ auth, dataDir: s.dataDir });
+      expect((await login(restarted, 'nuova-password-123')).statusCode).toBe(200);
+      await restarted.app.close();
+      // password dimenticata: un nuovo O2B_PASSWORD_HASH prevale su auth.yaml
+      const reset = await makeTestServer({ auth: { ...auth, passwordHash: hashPassword('password-ripristinata') }, dataDir: s.dataDir });
+      expect((await login(reset, 'password-ripristinata')).statusCode).toBe(200);
+      await reset.app.close();
+    } finally {
+      await fs.rm(s.dataDir, { recursive: true, force: true });
+    }
+  });
+
+  it('senza modalità password il cambio password non è previsto', async () => {
+    const s = await makeTestServer();
+    try {
+      const res = await s.app.inject({
+        method: 'POST',
+        url: '/api/auth/password',
+        payload: { currentPassword: 'qualsiasi-cosa', newPassword: 'nuova-password-123' },
+      });
+      expect(res.statusCode).toBe(400);
+    } finally {
+      await s.app.close();
+      await fs.rm(s.dataDir, { recursive: true, force: true });
+    }
+  });
+
   it('nessun URL alternativo aggira il login (codifica, slash doppi, dot segment)', async () => {
     const s = await makeTestServer({
       auth: { mode: 'password', passwordHash: hashPassword('password-di-prova'), sessionSecret: 'segreto-test' },

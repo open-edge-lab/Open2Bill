@@ -9,6 +9,7 @@ import {
   Loader,
   NumberInput,
   Paper,
+  PasswordInput,
   SegmentedControl,
   Select,
   Stack,
@@ -31,7 +32,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { ApiError, api, errorMessage } from '../api/client';
-import { keys, useAppInfo, useIssuer } from '../api/hooks';
+import { keys, useAppInfo, useAuthStatus, useIssuer } from '../api/hooks';
 import type { IssuerResponse } from '../api/types';
 import { IssuesList } from '../components/IssuesList';
 import { desktop } from '../lib/desktop';
@@ -296,8 +297,90 @@ function IssuerForm({ initial, isFirstRun }: { initial: IssuerInput; isFirstRun:
   );
 }
 
+/** Come MIN_PASSWORD_LENGTH del server, che resta comunque quello che decide. */
+const MIN_PASSWORD_LENGTH = 10;
+
+interface PasswordChange {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+/** Errori del server da mostrare sotto il campo che li riguarda. */
+const PASSWORD_ERROR_FIELD: Partial<Record<string, keyof PasswordChange>> = {
+  invalid_password: 'currentPassword',
+  weak_password: 'newPassword',
+};
+
+function PasswordSection() {
+  const form = useForm<PasswordChange>({
+    mode: 'uncontrolled',
+    initialValues: { currentPassword: '', newPassword: '', confirmPassword: '' },
+    validate: {
+      newPassword: (value) => (value.length < MIN_PASSWORD_LENGTH ? `Usa almeno ${MIN_PASSWORD_LENGTH} caratteri` : null),
+      confirmPassword: (value, values) => (value !== values.newPassword ? 'Le due password non coincidono' : null),
+    },
+  });
+  const [busy, setBusy] = useState(false);
+
+  async function submit({ currentPassword, newPassword }: PasswordChange) {
+    setBusy(true);
+    try {
+      await api.post('/api/auth/password', { currentPassword, newPassword });
+      form.reset();
+      notifications.show({ message: 'Password cambiata. Gli altri dispositivi dovranno accedere di nuovo.', color: 'stamp' });
+    } catch (err) {
+      const field = err instanceof ApiError ? PASSWORD_ERROR_FIELD[err.code] : undefined;
+      if (field) form.setFieldError(field, errorMessage(err));
+      else notifications.show({ title: 'Password non cambiata', message: errorMessage(err), color: 'red' });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Section
+      title="Password di accesso"
+      description="Dopo il cambio resti collegato qui; negli altri browser e dispositivi servirà la nuova password."
+    >
+      <form onSubmit={form.onSubmit(submit)}>
+        <Stack gap="sm" maw={360}>
+          <PasswordInput
+            label="Password attuale"
+            autoComplete="current-password"
+            required
+            key={form.key('currentPassword')}
+            {...form.getInputProps('currentPassword')}
+          />
+          <PasswordInput
+            label="Nuova password"
+            description={`Almeno ${MIN_PASSWORD_LENGTH} caratteri`}
+            autoComplete="new-password"
+            required
+            key={form.key('newPassword')}
+            {...form.getInputProps('newPassword')}
+          />
+          <PasswordInput
+            label="Ripeti la nuova password"
+            autoComplete="new-password"
+            required
+            key={form.key('confirmPassword')}
+            {...form.getInputProps('confirmPassword')}
+          />
+          <Group>
+            <Button type="submit" loading={busy}>
+              Cambia password
+            </Button>
+          </Group>
+        </Stack>
+      </form>
+    </Section>
+  );
+}
+
 export function SettingsPage() {
   const app = useAppInfo();
+  const auth = useAuthStatus();
   const issuer = useIssuer(Boolean(app.data?.hasIssuer));
   const [templateMsg, setTemplateMsg] = useState<string | null>(null);
 
@@ -371,6 +454,8 @@ export function SettingsPage() {
           {templateMsg && <Text size="sm">{templateMsg}</Text>}
         </Stack>
       </Paper>
+
+      {auth.data?.mode === 'password' && <PasswordSection />}
     </Stack>
   );
 }
