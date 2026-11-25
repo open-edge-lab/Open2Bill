@@ -29,7 +29,6 @@ const COMMON_VAT_RATES = new Set(['0.00', '4.00', '5.00', '10.00', '22.00']);
 
 const VAT_NUMBER_PROBLEMS = {
   format: 'deve avere 11 cifre (il prefisso IT si può omettere)',
-  checksum: 'l’ultima cifra (di controllo) non corrisponde alle altre, controlla di averla copiata bene',
 } as const;
 
 export function validateIssuer(issuer: Issuer): ValidationIssue[] {
