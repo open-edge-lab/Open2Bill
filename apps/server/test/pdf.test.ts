@@ -5,7 +5,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { DocumentSchema, calculateTotals } from '@open2bill/core';
 import { DEFAULT_ASSETS_DIR } from '../src/app';
-import { PuppeteerPdfEngine, findBrowserExecutable } from '../src/pdf/puppeteer-engine';
+import { PdfRenderTimeoutError, PuppeteerPdfEngine, findBrowserExecutable } from '../src/pdf/puppeteer-engine';
 import { TemplateRenderer } from '../src/pdf/template';
 import { DataStore } from '../src/storage/data-store';
 import { EXAMPLES_DIR } from './helpers';
@@ -55,6 +55,23 @@ describe.skipIf(!browser)('PDF reale (puppeteer-core)', () => {
       }
     } finally {
       await engine.close();
+    }
+  });
+
+  it('oltre il tempo massimo rifiuta invece di restare appeso, e poi riparte', async () => {
+    const engine = new PuppeteerPdfEngine(browser, { timeoutMs: 1 });
+    const html = '<!doctype html><html><body><p>Documento di prova</p></body></html>';
+    try {
+      await expect(engine.render(html)).rejects.toBeInstanceOf(PdfRenderTimeoutError);
+    } finally {
+      await engine.close();
+    }
+    const normal = new PuppeteerPdfEngine(browser);
+    try {
+      const pdf = await normal.render(html);
+      expect(Buffer.from(pdf.subarray(0, 5)).toString()).toBe('%PDF-');
+    } finally {
+      await normal.close();
     }
   });
 

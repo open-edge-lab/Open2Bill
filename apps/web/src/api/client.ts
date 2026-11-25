@@ -16,8 +16,16 @@ export class ApiError extends Error {
 
 export const UNAUTHORIZED_EVENT = 'o2b:unauthorized';
 
+/** Prefisso dell'app quando è pubblicata in un sottopercorso (es. "/open2bill"), vuoto alla radice. */
+export const BASE_PATH = import.meta.env.BASE_URL.replace(/\/+$/, '');
+
+/** URL dell'API sotto il prefisso dell'app: apiUrl('/api/app') → '/open2bill/api/app'. */
+export function apiUrl(path: string): string {
+  return `${BASE_PATH}${path}`;
+}
+
 async function request<T>(method: string, url: string, body?: unknown): Promise<T> {
-  const res = await fetch(url, {
+  const res = await fetch(apiUrl(url), {
     method,
     credentials: 'same-origin',
     headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,

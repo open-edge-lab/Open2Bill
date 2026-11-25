@@ -201,6 +201,10 @@ export function DocumentEditor({ initial, isNew }: { initial: Document; isNew: b
     form.setErrors(errors);
   }
 
+  async function saveDraft() {
+    if (await save()) notifications.show({ message: 'Bozza salvata.', color: 'stamp' });
+  }
+
   async function save({ redirect = true }: { redirect?: boolean } = {}): Promise<Document | null> {
     setSaving(true);
     setServerIssues([]);
@@ -591,7 +595,7 @@ export function DocumentEditor({ initial, isNew }: { initial: Document; isNew: b
               Clicca su un totale sottolineato e scrivi l’importo che vuoi ottenere: ricalcolo {activeLineLabel}.
             </Text>
             <Group grow gap="xs">
-              <Button variant="default" leftSection={<IconDeviceFloppy size={16} />} onClick={() => void save()} loading={saving && !issueMutation.isPending}>
+              <Button variant="default" leftSection={<IconDeviceFloppy size={16} />} onClick={() => void saveDraft()} loading={saving && !issueMutation.isPending}>
                 Salva bozza
               </Button>
               <Button variant="default" leftSection={<IconEye size={16} />} onClick={previewHandlers.open}>
@@ -601,6 +605,12 @@ export function DocumentEditor({ initial, isNew }: { initial: Document; isNew: b
             <Button leftSection={<IconFileCheck size={16} />} disabled={hasErrors} onClick={confirmIssue} loading={issueMutation.isPending}>
               Emetti {DOCUMENT_KIND_TITLES[type].toLowerCase()}
             </Button>
+            {type !== 'proforma' && (
+              <Text size="xs" c="dimmed">
+                Il file XML per Fatture e Corrispettivi si crea all’emissione: dopo lo scarichi dalla pagina del documento
+                (pulsante «Scarica XML»).
+              </Text>
+            )}
             <IssuesList issues={issues} />
             {!isNew && (
               <Button variant="subtle" color="red" size="xs" leftSection={<IconTrash size={14} />} onClick={confirmDelete}>
