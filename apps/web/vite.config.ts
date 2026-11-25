@@ -2,7 +2,9 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 // In sviluppo l'API gira su Fastify (porta 3210) e Vite fa da proxy.
+// VITE_BASE pubblica la UI in un sottopercorso (es. "/open2bill/" dietro nginx); default la radice.
 export default defineConfig({
+  base: process.env.VITE_BASE ?? '/',
   plugins: [react()],
   server: {
     port: 5273,

@@ -14,3 +14,5 @@ output
 .env
 .env.*
 **/*.pdf
+# dati della demo sul server (copia dei dati fittizi): fuori dall'immagine
+demo-data

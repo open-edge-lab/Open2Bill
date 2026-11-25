@@ -27,7 +27,7 @@ import {
 import { DOCUMENT_KIND_TITLES, displayName, todayIso, type Document } from '@open2bill/core';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { api, errorMessage } from '../api/client';
+import { api, apiUrl, errorMessage } from '../api/client';
 import { useAppInfo, useDocumentAction, useInvalidateDocuments } from '../api/hooks';
 import type { DocumentDetails } from '../api/types';
 import { StatusBadge } from '../components/StatusBadge';
@@ -107,7 +107,7 @@ export function DocumentView({ details }: { details: DocumentDetails }) {
 
   const fileLink = (kind: 'xml' | 'pdf', fileName?: string) =>
     fileName ? (
-      <Button component="a" href={`/api/documents/${doc.id}/${kind}`} variant={kind === 'xml' ? 'filled' : 'default'} leftSection={<IconDownload size={16} />}>
+      <Button component="a" href={apiUrl(`/api/documents/${doc.id}/${kind}`)} variant={kind === 'xml' ? 'filled' : 'default'} leftSection={<IconDownload size={16} />}>
         Scarica {kind.toUpperCase()}
       </Button>
     ) : null;

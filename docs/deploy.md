@@ -52,6 +52,10 @@ server {
 }
 ```
 
+Per pubblicare Open2Bill in un sottopercorso (es. `https://server/open2bill/`) accanto ad
+altre app, compila la UI con quel prefisso (`docker compose build --build-arg VITE_BASE=/open2bill/`)
+e fai togliere il prefisso a nginx: esempio completo in [deploy/](../deploy/README.md).
+
 Ottieni il certificato con `certbot --nginx -d fatture.example.com`. `O2B_TRUST_PROXY=1` (già
 impostato nell'immagine) fa sì che il cookie di sessione sia `Secure` dietro HTTPS.
 

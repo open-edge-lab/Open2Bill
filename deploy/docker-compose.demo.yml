@@ -1,0 +1,30 @@
+# Demo di Open2Bill con dati FITTIZI, pubblicata da nginx in un sottopercorso (/open2bill/).
+#
+# Uso, dalla cartella del progetto sul server:
+#   docker compose -f deploy/docker-compose.demo.yml up -d --build
+#
+# Servono, accanto al progetto (mai nel repository):
+#   .env        O2B_PASSWORD_HASH e O2B_SESSION_SECRET (vedi deploy/README.md), permessi 600
+#   demo-data/  copia di examples/data, di proprietà dell'utente 1000 (l'utente "node" del container)
+#
+# Il prefisso /open2bill/ è compilato negli asset della UI (VITE_BASE) e tolto da nginx
+# (deploy/nginx/open2bill.conf): se lo cambi, cambia entrambi.
+name: open2bill
+
+services:
+  open2bill:
+    build:
+      context: ..
+      args:
+        VITE_BASE: /open2bill/
+    image: open2bill:latest
+    container_name: open2bill
+    restart: unless-stopped
+    env_file: ../.env
+    ports:
+      - "127.0.0.1:8086:3210"   # solo in locale: davanti c'è nginx con HTTPS
+    volumes:
+      - ../demo-data:/data
+    # Chromium (PDF) usa /dev/shm: i 64 MB predefiniti di Docker possono non bastare
+    shm_size: 256m
+    mem_limit: 768m

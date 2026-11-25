@@ -2,7 +2,7 @@ import { Center, Loader } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router';
-import { UNAUTHORIZED_EVENT } from './api/client';
+import { BASE_PATH, UNAUTHORIZED_EVENT } from './api/client';
 import { keys, useAuthStatus } from './api/hooks';
 import { AppLayout } from './components/AppLayout';
 import { LoginPage } from './pages/LoginPage';
@@ -25,7 +25,7 @@ const router = createBrowserRouter([
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },
-]);
+], { basename: BASE_PATH || '/' });
 
 export function App() {
   const auth = useAuthStatus();

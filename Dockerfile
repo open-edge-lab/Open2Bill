@@ -12,6 +12,9 @@ COPY apps/web/package.json apps/web/
 COPY apps/desktop/package.json apps/desktop/
 RUN npm ci --ignore-scripts
 COPY . .
+# Prefisso della UI quando nginx la pubblica in un sottopercorso (es. /open2bill/)
+ARG VITE_BASE=/
+ENV VITE_BASE=$VITE_BASE
 RUN npm run build -w @open2bill/web \
  && npm run build -w @open2bill/server \
  && npm prune --omit=dev --ignore-scripts

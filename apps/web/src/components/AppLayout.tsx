@@ -38,7 +38,7 @@ export function AppLayout() {
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" aria-label="Menu" />
             <UnstyledButton component={Link} to="/" aria-label="Open2Bill, vai ai documenti">
               <Group gap={8}>
-                <img src="/favicon.svg" alt="" width={24} height={24} />
+                <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width={24} height={24} />
                 <Text fw={600} size="lg">
                   Open2Bill
                 </Text>
