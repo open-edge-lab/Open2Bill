@@ -65,7 +65,7 @@ import {
   useNumbering,
 } from '../api/hooks';
 import type { DocumentDetails } from '../api/types';
-import { CustomerFields } from '../components/CustomerFields';
+import { CustomerFields, customerFormValues } from '../components/CustomerFields';
 import { IssuesList } from '../components/IssuesList';
 import { LinesEditor } from '../components/LinesEditor';
 import { PreviewDrawer } from '../components/PreviewDrawer';
@@ -121,7 +121,10 @@ export function DocumentEditor({ initial, isNew }: { initial: Document; isNew: b
   // la bozza esiste già sul server (dopo il primo salvataggio di un documento nuovo)
   const persisted = useRef(!isNew);
 
-  const form = useForm<Document>({ mode: 'controlled', initialValues: initial });
+  const form = useForm<Document>({
+    mode: 'controlled',
+    initialValues: { ...initial, customer: customerFormValues(initial.customer) },
+  });
   const values = form.getValues();
   const issuer = issuerQ.data?.issuer;
   const type = values.type;
@@ -195,7 +198,8 @@ export function DocumentEditor({ initial, isNew }: { initial: Document; isNew: b
     if (!c) return;
     const { id: customerId, ...data } = c as Customer;
     form.setFieldValue('customerId', customerId);
-    form.setFieldValue('customer', data);
+    // tutti i dati del cliente, anche quelli vuoti: nessun campo resta con il testo di prima
+    form.setFieldValue('customer', customerFormValues(data));
     setCustomerExpanded(false);
     if (data.kind === 'individual' && form.getValues().withholding) {
       form.setFieldValue('withholding', null);
@@ -504,7 +508,15 @@ export function DocumentEditor({ initial, isNew }: { initial: Document; isNew: b
                     </Button>
                   </Group>
                 ) : (
-                  <CustomerFields form={form} prefix="customer" />
+                  <CustomerFields
+                    form={form}
+                    prefix="customer"
+                    addressBook={{
+                      customers,
+                      selected: customers.find((c) => c.id === values.customerId),
+                      onPick: pickCustomer,
+                    }}
+                  />
                 )}
               </Stack>
             </Section>
