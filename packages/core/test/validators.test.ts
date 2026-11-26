@@ -31,10 +31,8 @@ describe('validatori', () => {
     expect(normalizeVatNumber('ITALIA')).toBe('ITALIA');
     expect(isValidVatNumber('IT12345678903')).toBe(true);
     expect(vatNumberProblem('IT12345678903')).toBeNull();
-    // la cifra di controllo non blocca: conta solo che le cifre siano 11
-    expect(vatNumberProblem('12345678901')).toBeNull();
+    expect(vatNumberProblem('12345678901')).toBe('checksum');
     expect(vatNumberProblem('IT1234567890')).toBe('format');
-    expect(vatNumberProblem('1234567890A')).toBe('format');
     // nel modello si salva senza prefisso: è IdCodice nell'XML, il paese sta in vatCountry
     const customer = CustomerDataSchema.parse({
       kind: 'company',
@@ -61,21 +59,6 @@ describe('validatori', () => {
     expect(isValidTaxCode('rssmra80a01h501u')).toBe(true);
     expect(isValidTaxCode('RSSMRA80A01H501X')).toBe(false);
     expect(isValidTaxCode('09876543217')).toBe(true);
-    // numerico (soggetti diversi dalle persone fisiche): solo 11 cifre, come la partita IVA
-    expect(isValidTaxCode('12345678901')).toBe(true);
-    expect(isValidTaxCode('1234567890')).toBe(false);
-  });
-
-  it('un cliente con partita IVA e codice fiscale che non rispettano la cifra di controllo si può fatturare', () => {
-    const customer = CustomerDataSchema.parse({
-      kind: 'company',
-      companyName: 'Esempio Software S.r.l.',
-      vatNumber: '12345678901',
-      taxCode: '12345678901',
-      address: { street: 'Via Esempio 1', postalCode: '40100', city: 'Bologna', province: 'BO' },
-    });
-    const issues = validateDocument(makeDocument({ customer }), issuer).issues;
-    expect(issues.filter((i) => i.path === 'customer.vatNumber' || i.path === 'customer.taxCode')).toEqual([]);
   });
 
   it('IBAN', () => {

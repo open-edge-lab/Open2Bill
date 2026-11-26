@@ -16,16 +16,13 @@ export function normalizeVatNumber(value: string): string {
     .replace(/^IT(?=\d{11}$)/, '');
 }
 
-/**
- * Cosa non va in una partita IVA italiana: null se va bene. Si controlla solo che abbia
- * 11 cifre, non la cifra di controllo: un utente ha confermato valida una partita IVA che
- * non la rispetta, e un errore qui bloccherebbe l'emissione. Che esista lo controlla lo SdI.
- */
-export function vatNumberProblem(value: string): 'format' | null {
-  return /^\d{11}$/.test(normalizeVatNumber(value)) ? null : 'format';
+/** Cosa non va in una partita IVA italiana: null se è valida. */
+export function vatNumberProblem(value: string): 'format' | 'checksum' | null {
+  const v = normalizeVatNumber(value);
+  if (!/^\d{11}$/.test(v)) return 'format';
+  return isValidVatNumber(v) ? null : 'checksum';
 }
 
-/** Cifra di controllo della partita IVA. Non si usa per bloccare (vedi vatNumberProblem). */
 export function isValidVatNumber(value: string): boolean {
   const v = normalizeVatNumber(value);
   if (!/^\d{11}$/.test(v)) return false;
@@ -43,12 +40,11 @@ export function isValidVatNumber(value: string): boolean {
 
 /**
  * Codice fiscale: 16 caratteri per le persone fisiche (con carattere di controllo,
- * omocodie comprese) oppure 11 cifre per i soggetti diversi. Per questi, spesso uguali alla
- * partita IVA, si controllano solo le cifre, come per la partita IVA (vedi vatNumberProblem).
+ * omocodie comprese) oppure 11 cifre per i soggetti diversi (stesso controllo della P.IVA).
  */
 export function isValidTaxCode(value: string): boolean {
   const v = value.trim().toUpperCase();
-  if (/^\d{11}$/.test(v)) return true;
+  if (/^\d{11}$/.test(v)) return isValidVatNumber(v);
   if (!/^[A-Z]{6}[0-9LMNPQRSTUV]{2}[A-EHLMPRST][0-9LMNPQRSTUV]{2}[A-Z][0-9LMNPQRSTUV]{3}[A-Z]$/.test(v)) {
     return false;
   }
