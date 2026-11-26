@@ -46,6 +46,9 @@ export function validateIssuer(issuer: Issuer): ValidationIssue[] {
   checkAddress(issuer.address, (p, m) => err(`address.${p}`, m), (p, m) => warn(`address.${p}`, m));
   if (issuer.payment.iban && !isValidIban(issuer.payment.iban)) err('payment.iban', 'IBAN dell’emittente non valido');
   if (issuer.contacts.email && !isValidEmail(issuer.contacts.email)) warn('contacts.email', 'Email non valida');
+  if (issuer.contacts.recipientCode && !isValidRecipientCode(issuer.contacts.recipientCode)) {
+    warn('contacts.recipientCode', 'Il codice destinatario (SDI) deve avere 7 caratteri (lettere maiuscole e cifre)');
+  }
   return issues;
 }
 

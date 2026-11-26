@@ -269,6 +269,35 @@ describe('banca dell’emittente nelle bozze', () => {
   });
 });
 
+describe('codice destinatario SDI', () => {
+  it('emittente e cliente: sul PDF se ci sono, non con 0000000', async () => {
+    const s = await makeTestServer();
+    const inject = (method: 'GET' | 'PUT' | 'POST', url: string, payload?: unknown) =>
+      s.app.inject({ method, url, payload: payload as object | undefined });
+    try {
+      const { issuer } = (await inject('GET', '/api/issuer')).json();
+      const saved = await inject('PUT', '/api/issuer', { ...issuer, contacts: { ...issuer.contacts, recipientCode: ' abc1234 ' } });
+      expect(saved.json().issuer.contacts.recipientCode).toBe('ABC1234');
+      expect(saved.json().issues).toEqual([]);
+
+      const tpl = (await inject('GET', '/api/documents/new?customerId=esempio-software-s-r-l')).json();
+      const preview = (recipientCode: string) =>
+        inject('POST', '/api/preview/html', { ...tpl, lines: goldenLines, customer: { ...tpl.customer, recipientCode } });
+      const withCode = (await preview('XYZ9876')).body;
+      expect(withCode).toContain('Codice SDI: ABC1234');
+      expect(withCode).toContain('Codice SDI: XYZ9876');
+      const withoutCode = (await preview('0000000')).body;
+      expect(withoutCode.match(/Codice SDI/g)).toHaveLength(1);
+
+      const bad = await inject('PUT', '/api/issuer', { ...issuer, contacts: { ...issuer.contacts, recipientCode: 'AB' } });
+      expect(bad.json().issues).toEqual([expect.objectContaining({ path: 'issuer.contacts.recipientCode', severity: 'warning' })]);
+    } finally {
+      await s.app.close();
+      await fs.rm(s.dataDir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('autenticazione', () => {
   it('modalità password: 401 senza sessione, login, accesso', async () => {
     const s = await makeTestServer({

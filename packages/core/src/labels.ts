@@ -31,7 +31,7 @@ export const DEFAULT_PDF_LABELS = {
   taxCode: 'Cod. Fisc.',
   taxIds: 'Cod. Fisc. e P.IVA',
   pec: 'PEC',
-  recipientCode: 'Codice destinatario',
+  recipientCode: 'Codice SDI',
 } as const;
 
 export type PdfLabelKey = keyof typeof DEFAULT_PDF_LABELS;

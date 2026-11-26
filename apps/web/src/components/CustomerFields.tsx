@@ -79,7 +79,7 @@ export function CustomerFields({ form, prefix = '' }: { form: AnyForm; prefix?: 
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>
           <TextInput
-            label="Codice destinatario"
+            label="Codice destinatario (SDI)"
             description={kind === 'individual' ? 'Per i privati resta 0000000' : '7 caratteri, oppure 0000000 con la PEC'}
             maxLength={7}
             {...upper('recipientCode')}

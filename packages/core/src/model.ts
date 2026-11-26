@@ -113,7 +113,18 @@ export const IssuerSchema = z
     taxRegime: z.enum(TAX_REGIME_CODES).default('RF01'),
     address: AddressSchema,
     contacts: z
-      .object({ phone: optionalText, email: optionalText, pec: optionalText })
+      .object({
+        phone: optionalText,
+        email: optionalText,
+        pec: optionalText,
+        /** Il proprio codice destinatario SDI: non va nell'XML, si stampa sul PDF se c'è. */
+        recipientCode: z
+          .string()
+          .trim()
+          .toUpperCase()
+          .transform((v) => (v === '' ? undefined : v))
+          .optional(),
+      })
       .prefault({}),
     /** Trasmittente: di default il codice fiscale (o la P.IVA) dell'emittente. */
     transmitter: z.object({ country: z.string().length(2).default('IT'), code: z.string() }).optional(),

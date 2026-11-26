@@ -48,7 +48,7 @@ const EMPTY_ISSUER: IssuerInput = {
   taxCode: '',
   taxRegime: 'RF01',
   address: { street: '', streetNumber: '', postalCode: '', city: '', province: '', country: 'IT' },
-  contacts: { email: '', pec: '', phone: '' },
+  contacts: { email: '', pec: '', phone: '', recipientCode: '' },
   payment: { method: 'MP05', terms: 'TP02', bankName: '', iban: '', beneficiary: '', dueDays: 30 },
   defaults: {
     vatRate: 22,
@@ -208,6 +208,14 @@ function IssuerForm({ initial, isFirstRun }: { initial: IssuerInput; isFirstRun:
             </Grid.Col>
             <Grid.Col span={{ base: 12, sm: 4 }}>
               <TextInput label="Telefono" {...form.getInputProps('contacts.phone')} />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 4 }}>
+              <TextInput
+                label="Il tuo codice destinatario (SDI)"
+                description="Facoltativo: 7 caratteri, compare sul PDF"
+                maxLength={7}
+                {...form.getInputProps('contacts.recipientCode')}
+              />
             </Grid.Col>
           </Grid>
         </Section>

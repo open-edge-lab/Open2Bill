@@ -92,9 +92,12 @@ export function buildViewModel(doc: Document, issuer: Issuer, totals: Totals): D
   const issuerTax: string[] = [];
   if (issuer.taxCode && issuer.taxCode !== issuer.vatNumber) issuerTax.push(`${labels.taxCode}: ${issuer.taxCode}`);
   issuerTax.push(`${labels.vatNumber}: ${issuer.vatNumber}`);
-  const contactLines = [issuer.contacts.email, issuer.contacts.pec ? `${labels.pec}: ${issuer.contacts.pec}` : undefined, issuer.contacts.phone].filter(
-    (v): v is string => Boolean(v),
-  );
+  const contactLines = [
+    issuer.contacts.email,
+    issuer.contacts.pec ? `${labels.pec}: ${issuer.contacts.pec}` : undefined,
+    issuer.contacts.phone,
+    issuer.contacts.recipientCode ? `${labels.recipientCode}: ${issuer.contacts.recipientCode}` : undefined,
+  ].filter((v): v is string => Boolean(v));
 
   // Cliente
   const c = doc.customer;
@@ -105,6 +108,8 @@ export function buildViewModel(doc: Document, issuer: Issuer, totals: Totals): D
     if (c.taxCode) customerTax.push(`${labels.taxCode}: ${c.taxCode}`);
     if (c.vatNumber) customerTax.push(`${labels.vatNumber}: ${c.vatNumber}`);
   }
+  // 0000000 vuol dire "nessun codice" (privato o recapito via PEC): non si stampa
+  if (c.recipientCode && c.recipientCode !== '0000000') customerTax.push(`${labels.recipientCode}: ${c.recipientCode}`);
 
   // Righe
   const showQuantity = totals.lines.some((l) => !toDec(l.quantity).eq(1) || Boolean(l.unit) || Boolean(l.discountPercent));
