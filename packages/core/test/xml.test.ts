@@ -47,7 +47,7 @@ describe('XML FatturaPA', () => {
     expect(el(xml, 'Descrizione')).toEqual([
       'Attivita\' di progettazione e sviluppo software "Gestionale di esempio"',
     ]);
-    expect(xml).toMatch(/^[\x09\x0A\x0D\x20-\x7E]*$/);
+    expect(xml).toMatch(/^[\t\n\r\x20-\x7E]*$/);
   });
 
   it('snapshot', () => {

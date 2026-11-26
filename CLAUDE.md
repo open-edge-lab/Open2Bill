@@ -127,7 +127,11 @@ scripts/         # guard dati privati e utilità
   1.2.4 (cambiano solo le descrizioni normative e si aggiunge `RF21`). Gli XSD stanno
   in `packages/core/schemas/`; la versione usata per la validazione si sceglie in base
   alla data di invio.
-- I testi nell'XML ammettono solo caratteri Basic Latin + Latin-1 Supplement: il
-  builder normalizza (es. "–" → "-") e tronca ai limiti dello schema.
+- I testi nell'XML ammettono solo caratteri Basic Latin + Latin-1 Supplement, ma il
+  builder scrive **solo ASCII** (`toAscii` in `text.ts`): il visualizzatore dell'Agenzia
+  delle Entrate mostra male le lettere accentate anche in un UTF-8 corretto. Le vocali
+  accentate diventano vocale + apostrofo ("attività" → "attivita'"), i caratteri
+  tipografici l'equivalente ASCII (es. "–" → "-"); poi si tronca ai limiti dello schema.
+  Il PDF conserva il testo originale.
 - Importi: sempre `decimal.js`, arrotondamento half-up a 2 decimali, mai `number`
   per i calcoli monetari.
