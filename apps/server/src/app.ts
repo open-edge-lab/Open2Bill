@@ -97,7 +97,7 @@ export async function createServer(options: ServerOptions): Promise<Open2BillSer
     documents,
     assetsDir,
     appInfo: {
-      version: options.version ?? '0.1.0',
+      version: options.version ?? '0.0.0',
       desktop: options.desktop ?? false,
       pdfAvailable: Boolean(pdfEngine),
     },
