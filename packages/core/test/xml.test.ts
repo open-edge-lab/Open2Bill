@@ -43,9 +43,11 @@ describe('XML FatturaPA', () => {
     expect(el(xml, 'ModalitaPagamento')).toEqual(['MP05']);
     expect(el(xml, 'ImportoPagamento')).toEqual(['1530.00']);
     expect(el(xml, 'IBAN')).toEqual(['IT60X0542811101000000123456']);
+    // solo ASCII: il visualizzatore dell'Agenzia delle Entrate mostra male le lettere accentate
     expect(el(xml, 'Descrizione')).toEqual([
-      'Attività di progettazione e sviluppo software "Gestionale di esempio"',
+      'Attivita\' di progettazione e sviluppo software "Gestionale di esempio"',
     ]);
+    expect(xml).toMatch(/^[\x09\x0A\x0D\x20-\x7E]*$/);
   });
 
   it('snapshot', () => {

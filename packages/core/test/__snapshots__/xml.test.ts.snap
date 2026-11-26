@@ -86,7 +86,7 @@ exports[`XML FatturaPA > snapshot 1`] = `
     <DatiBeniServizi>
       <DettaglioLinee>
         <NumeroLinea>1</NumeroLinea>
-        <Descrizione>Attività di progettazione e sviluppo software "Gestionale di esempio"</Descrizione>
+        <Descrizione>Attivita' di progettazione e sviluppo software "Gestionale di esempio"</Descrizione>
         <Quantita>1.00</Quantita>
         <PrezzoUnitario>1442.31</PrezzoUnitario>
         <PrezzoTotale>1442.31</PrezzoTotale>

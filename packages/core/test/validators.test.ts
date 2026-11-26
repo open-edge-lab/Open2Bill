@@ -10,6 +10,7 @@ import {
   normalizeVatNumber,
   slugify,
   vatNumberProblem,
+  toAscii,
   toBasicLatin,
   toLatin1,
   validateDocument,
@@ -91,6 +92,17 @@ describe('testi e formati', () => {
     expect(toLatin1('Attività però è così')).toBe('Attività però è così');
     expect(toLatin1('Łódź 10€')).toBe('Lódz 10EUR'); // ó è Latin-1: resta
     expect(toBasicLatin('Città')).toBe('Citta');
+  });
+
+  it('testo per l’XML: solo ASCII, vocali accentate con apostrofo', () => {
+    expect(toAscii('Attività però è così, perché più')).toBe("Attivita' pero' e' cosi', perche' piu'");
+    expect(toAscii('È PIÙ CITTÀ')).toBe("E' PIU' CITTA'");
+    expect(toAscii('Muñoz Müller Ça')).toBe('Munoz Muller Ca');
+    expect(toAscii('n° 3 «prova» 10€ – ½ kg ×2')).toBe('n. 3 "prova" 10EUR - 1/2 kg x2');
+    expect(toAscii('Straße Æsir')).toBe('Strasse AEsir');
+    expect(toAscii('Łódź')).toBe("Lo'dz");
+    // ogni carattere è ASCII stampabile
+    expect(toAscii('àèéìòù ÀÈÉÌÒÙ ñç ü ß § © ° ¿¡')).toMatch(/^[\x20-\x7E]*$/);
   });
 
   it('importi all’italiana', () => {

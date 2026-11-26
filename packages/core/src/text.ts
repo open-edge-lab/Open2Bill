@@ -50,9 +50,57 @@ export function toBasicLatin(text: string): string {
     .replace(/[^\x20-\x7E]/g, '');
 }
 
-/** Normalizza e tronca al limite di lunghezza del campo. */
+// Lettere di Latin-1 che non si scompongono in lettera base + accento, e simboli comuni.
+const LATIN1_TO_ASCII: ReadonlyArray<readonly [RegExp, string]> = [
+  [/\u00DF/g, 'ss'],
+  [/\u00C6/g, 'AE'],
+  [/\u00E6/g, 'ae'],
+  [/\u00D8/g, 'O'],
+  [/\u00F8/g, 'o'],
+  [/\u00D0/g, 'D'],
+  [/\u00F0/g, 'd'],
+  [/\u00DE/g, 'Th'],
+  [/\u00FE/g, 'th'],
+  [/[\u00B0\u00BA]/g, '.'], // "n°" → "n."
+  [/\u00AA/g, 'a'],
+  [/[\u00AB\u00BB]/g, '"'],
+  [/[\u00B4`]/g, "'"], // accento usato come apostrofo
+  [/\u00D7/g, 'x'],
+  [/\u00F7/g, '/'],
+  [/\u00B1/g, '+/-'],
+  [/\u00B9/g, '1'],
+  [/\u00B2/g, '2'],
+  [/\u00B3/g, '3'],
+  [/\u00BC/g, '1/4'],
+  [/\u00BD/g, '1/2'],
+  [/\u00BE/g, '3/4'],
+  [/\u00B5/g, 'u'],
+  [/\u00A7/g, 'par.'],
+  [/\u00A9/g, '(c)'],
+  [/\u00AE/g, '(r)'],
+  [/\u00A3/g, 'GBP'],
+  [/\u00B7/g, '.'],
+];
+
+/**
+ * Testo per l'XML FatturaPA: solo caratteri ASCII. Lo schema ammetterebbe anche Latin-1, ma
+ * il visualizzatore dell'Agenzia delle Entrate mostra male le lettere accentate di un file
+ * UTF-8 corretto. Si scrive quindi come in italiano senza accenti: vocale + apostrofo
+ * ("attività" → "attivita'", "perché" → "perche'"); le altre lettere perdono l'accento
+ * ("Muñoz" → "Munoz"). Il PDF di cortesia conserva il testo originale.
+ */
+export function toAscii(text: string): string {
+  let s = toLatin1(text)
+    .normalize('NFD')
+    .replace(/([AEIOUaeiou])[\u0300\u0301]/g, "$1'")
+    .replace(/[\u0300-\u036F]/g, '');
+  for (const [re, rep] of LATIN1_TO_ASCII) s = s.replace(re, rep);
+  return s.replace(/[^\x20-\x7E]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+/** Testo per un campo dell'XML: solo ASCII (vedi toAscii) e tagliato al limite del campo. */
 export function latinField(text: string, maxLength: number): string {
-  return truncate(toLatin1(text), maxLength);
+  return truncate(toAscii(text), maxLength);
 }
 
 export function truncate(text: string, maxLength: number): string {
