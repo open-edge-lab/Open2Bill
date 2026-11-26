@@ -1,7 +1,7 @@
 import type { Catalog, Customer, Document } from '@open2bill/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './client';
-import type { AppInfo, AuthStatus, DocumentDetails, DocumentSummary, IssueResult, IssuerResponse } from './types';
+import type { AppInfo, AuthStatus, DocumentDetails, DocumentSummary, IssueResult, IssuerResponse, Numbering } from './types';
 
 export const keys = {
   app: ['app'] as const,
@@ -11,12 +11,21 @@ export const keys = {
   catalog: ['catalog'] as const,
   documents: ['documents'] as const,
   document: (id: string) => ['documents', id] as const,
+  numberingAll: ['numbering'] as const,
+  numbering: (year: number) => ['numbering', year] as const,
 };
 
 export const useAppInfo = () => useQuery({ queryKey: keys.app, queryFn: () => api.get<AppInfo>('/api/app') });
 
 export const useAuthStatus = () =>
   useQuery({ queryKey: keys.auth, queryFn: () => api.get<AuthStatus>('/api/auth/status'), retry: false });
+
+export const useNumbering = (year: number, enabled = true) =>
+  useQuery({
+    queryKey: keys.numbering(year),
+    queryFn: () => api.get<Numbering>(`/api/numbering?year=${year}`),
+    enabled: enabled && Number.isInteger(year) && year >= 2000,
+  });
 
 export const useIssuer = (enabled = true) =>
   useQuery({ queryKey: keys.issuer, queryFn: () => api.get<IssuerResponse>('/api/issuer'), enabled, retry: false });
@@ -42,7 +51,7 @@ export function useInvalidateDocuments() {
   return () => qc.invalidateQueries({ queryKey: keys.documents });
 }
 
-export function useDocumentAction<T = Document>(action: 'convert' | 'credit-note' | 'duplicate' | 'regenerate-pdf') {
+export function useDocumentAction<T = Document>(action: 'convert' | 'credit-note' | 'duplicate' | 'regenerate-pdf' | 'reopen') {
   const invalidate = useInvalidateDocuments();
   return useMutation({
     mutationFn: (id: string) => api.post<T>(`/api/documents/${id}/${action}`),
@@ -65,6 +74,7 @@ export function useForgetDraft() {
   const qc = useQueryClient();
   return (draftId: string) => {
     qc.removeQueries({ queryKey: keys.document(draftId), exact: true });
+    void qc.invalidateQueries({ queryKey: keys.numberingAll });
     return qc.invalidateQueries({ queryKey: keys.documents });
   };
 }

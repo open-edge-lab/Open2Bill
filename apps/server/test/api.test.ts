@@ -269,6 +269,103 @@ describe('banca dell’emittente nelle bozze', () => {
   });
 });
 
+describe('numerazione e riapertura', () => {
+  let s: Server;
+  const year = new Date().getFullYear();
+  beforeAll(async () => {
+    s = await makeTestServer();
+  });
+  afterAll(async () => {
+    await s.app.close();
+    await fs.rm(s.dataDir, { recursive: true, force: true });
+  });
+  const inject = (method: 'GET' | 'POST' | 'PUT', url: string, payload?: unknown) =>
+    s.app.inject({ method, url, payload: payload as object | undefined });
+  const numbering = async () => (await inject('GET', `/api/numbering?year=${year}`)).json();
+  async function draft(overrides: Record<string, unknown> = {}, type = 'TD01') {
+    const tpl = (await inject('GET', `/api/documents/new?type=${type}&customerId=esempio-software-s-r-l`)).json();
+    const res = await inject('POST', '/api/documents', { ...tpl, lines: goldenLines, ...overrides });
+    expect(res.statusCode).toBe(201);
+    return res.json().document as { id: string };
+  }
+  const issue = (id: string) => inject('POST', `/api/documents/${id}/issue`);
+
+  it('propone il prossimo numero, accetta un numero scelto e riparte da lì', async () => {
+    expect((await numbering()).series.invoice).toMatchObject({ next: 1, nextNumber: '1', minNext: 1 });
+    expect((await numbering()).series.proforma).toMatchObject({ next: 1, nextNumber: 'PF1' });
+
+    // numerazione cominciata con un altro programma: prossimo numero 16
+    const set = await inject('PUT', '/api/numbering', { year, next: { invoice: 16 } });
+    expect(set.statusCode).toBe(200);
+    expect(set.json().series.invoice).toMatchObject({ next: 16, lastUsed: 15, minNext: 1 });
+    expect((await issue((await draft()).id)).json().document).toMatchObject({ number: '16', sequence: 16 });
+    expect((await numbering()).series.invoice.next).toBe(17);
+
+    // numero scelto nella bozza, conservato nei salvataggi
+    const chosen = await draft({ sequence: 20 });
+    expect((await inject('GET', `/api/documents/${chosen.id}`)).json().document.sequence).toBe(20);
+    expect((await issue(chosen.id)).json().document.number).toBe('20');
+    expect((await numbering()).series.invoice).toMatchObject({ next: 21, minNext: 21 });
+
+    // un numero già usato si rifiuta; uno libero più basso si accetta e non abbassa il prossimo
+    const taken = await issue((await draft({ sequence: 16 })).id);
+    expect(taken.statusCode).toBe(409);
+    expect(taken.json().message).toContain('16');
+    expect((await issue((await draft({ sequence: 18 })).id)).json().document.number).toBe('18');
+    expect((await numbering()).series.invoice.next).toBe(21);
+
+    // il prossimo numero non scende sotto un documento emesso qui, ma si può correggere sopra
+    expect((await inject('PUT', '/api/numbering', { year, next: { invoice: 15 } })).statusCode).toBe(409);
+    expect((await inject('PUT', '/api/numbering', { year, next: { invoice: 25 } })).json().series.invoice.next).toBe(25);
+    expect((await inject('PUT', '/api/numbering', { year, next: { invoice: 21 } })).json().series.invoice.next).toBe(21);
+
+    // lo stato conserva anche il progressivo invio
+    const state = await fs.readFile(path.join(s.dataDir, 'state.yaml'), 'utf8');
+    expect(state).toMatch(/transmissionCounter: [1-9]/);
+    expect(state).toContain('lastSequences');
+  });
+
+  it('riapre un documento emesso: torna bozza con lo stesso numero, XML e PDF nuovi', async () => {
+    const issued = (await issue((await draft()).id)).json().document;
+    const outDir = path.join(s.dataDir, 'output', String(year));
+    await fs.access(path.join(outDir, issued.xmlFileName));
+    await inject('POST', `/api/documents/${issued.id}/status`, { status: 'uploaded', sdiNotes: 'Scartata' });
+
+    const reopened = await inject('POST', `/api/documents/${issued.id}/reopen`);
+    expect(reopened.statusCode).toBe(200);
+    const reopenedDraft = reopened.json();
+    expect(reopenedDraft).toMatchObject({ status: 'draft', sequence: issued.sequence });
+    expect(reopenedDraft.number).toBeUndefined();
+    expect(reopenedDraft.xmlFileName).toBeUndefined();
+    expect((await inject('GET', `/api/documents/${issued.id}`)).statusCode).toBe(404);
+    await expect(fs.access(path.join(outDir, issued.xmlFileName))).rejects.toThrow();
+
+    // corretta e riemessa: stesso numero e id, nuovo progressivo invio (nuovo nome file)
+    const fixed = { ...reopenedDraft, reason: 'Causale corretta' };
+    expect((await inject('PUT', `/api/documents/${reopenedDraft.id}`, fixed)).statusCode).toBe(200);
+    const reissued = (await issue(reopenedDraft.id)).json().document;
+    expect(reissued).toMatchObject({ id: issued.id, number: issued.number, status: 'issued', reason: 'Causale corretta' });
+    expect(reissued.transmissionSequence).not.toBe(issued.transmissionSequence);
+    await fs.access(path.join(outDir, reissued.xmlFileName));
+
+    // una bozza non si riapre
+    expect((await inject('POST', `/api/documents/${(await draft()).id}/reopen`)).statusCode).toBe(409);
+    // con una nota di credito collegata non si riapre
+    const credit = (await inject('POST', `/api/documents/${reissued.id}/credit-note`)).json();
+    expect((await issue(credit.id)).statusCode).toBe(200);
+    expect((await inject('POST', `/api/documents/${reissued.id}/reopen`)).statusCode).toBe(409);
+  });
+
+  it('una proforma già convertita non si riapre', async () => {
+    const proforma = (await issue((await draft({}, 'proforma')).id)).json().document;
+    const converted = (await inject('POST', `/api/documents/${proforma.id}/convert`)).json();
+    expect(converted.status).toBe('draft');
+    const res = await inject('POST', `/api/documents/${proforma.id}/reopen`);
+    expect(res.statusCode).toBe(409);
+    expect(res.json().message).toContain('convertita');
+  });
+});
+
 describe('codice destinatario SDI', () => {
   it('emittente e cliente: sul PDF se ci sono, non con 0000000', async () => {
     const s = await makeTestServer();

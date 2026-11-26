@@ -24,6 +24,13 @@ export interface ApiContext {
 }
 
 const idParams = z.object({ id: z.string() });
+const year = z.coerce.number().int().min(2000).max(2999);
+const nextSequence = z.number().int().min(1).max(999_999).optional();
+const numberingQuery = z.object({ year: year.default(() => new Date().getFullYear()) });
+const numberingBody = z.object({
+  year,
+  next: z.object({ invoice: nextSequence, creditNote: nextSequence, proforma: nextSequence }),
+});
 const statusBody = z.object({
   status: z.enum(['issued', 'uploaded']),
   uploadedAt: z.string().optional(),
@@ -118,6 +125,16 @@ export function registerApiRoutes(app: FastifyInstance, ctx: ApiContext): void {
   app.post('/api/documents/:id/status', async (req) => {
     const body = statusBody.parse(req.body);
     return documents.setStatus(idParams.parse(req.params).id, body.status, body);
+  });
+
+  app.post('/api/documents/:id/reopen', async (req) => documents.reopen(idParams.parse(req.params).id));
+
+  // ── Numerazione ────────────────────────────────────────────
+  app.get('/api/numbering', async (req) => documents.numbering(numberingQuery.parse(req.query).year));
+
+  app.put('/api/numbering', async (req) => {
+    const body = numberingBody.parse(req.body);
+    return documents.setNextNumbers(body.year, body.next);
   });
 
   app.post('/api/documents/:id/regenerate-pdf', async (req) =>

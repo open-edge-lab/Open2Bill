@@ -7,9 +7,13 @@ import {
   displayName,
   documentNumberFor,
   duplicateDocument,
+  formatDocumentNumber,
   invoiceToCreditNote,
   issuedDocumentId,
   newDocument,
+  newDraftId,
+  NUMBERING_SERIES,
+  NUMBERING_SERIES_TITLES,
   proformaToInvoice,
   sameBankDetails,
   slugify,
@@ -19,6 +23,7 @@ import {
   type Document,
   type DocumentKind,
   type Issuer,
+  type NumberingSeries,
   type Totals,
   type ValidationIssue,
 } from '@open2bill/core';
@@ -52,6 +57,21 @@ export interface FullValidation extends DocumentDetails {
 export interface IssueResult {
   document: Document;
   warnings: string[];
+}
+
+export interface SeriesNumbering {
+  /** Ultimo numero usato (emesso qui o impostato a mano). */
+  lastUsed: number;
+  /** Prossimo numero proposto, e lo stesso già formattato (es. "FPR 16/2026"). */
+  next: number;
+  nextNumber: string;
+  /** Il prossimo numero non può scendere sotto questo: c'è già un documento emesso. */
+  minNext: number;
+}
+
+export interface Numbering {
+  year: number;
+  series: Record<NumberingSeries, SeriesNumbering>;
 }
 
 /** Serializza le operazioni che assegnano numeri, per non avere doppioni. */
@@ -187,8 +207,9 @@ export class DocumentService {
     const validation = validateDocument(draft, issuer, { today: this.today() });
     if (!validation.ok) throw new ValidationFailedError(validation.issues);
 
+    // Il numero scelto nella bozza (anche quello di un documento riaperto), altrimenti il prossimo.
     const year = Number(draft.date.slice(0, 4));
-    const sequence = await this.store.nextSequence(draft.type, year);
+    const sequence = draft.sequence ?? (await this.store.nextSequence(draft.type, year));
     const doc: Document = {
       ...draft,
       id: issuedDocumentId(draft.type, sequence, year),
@@ -198,7 +219,7 @@ export class DocumentService {
       issuedAt: new Date().toISOString(),
     };
     if (await fileExists(this.store.paths.document(doc.id))) {
-      throw new ConflictError(`Esiste già un documento ${doc.id}`);
+      throw new ConflictError(`Il numero ${doc.number} del ${year} è già usato da un altro documento: scegline un altro`);
     }
 
     const warnings: string[] = [];
@@ -233,6 +254,7 @@ export class DocumentService {
 
     await this.store.saveDocument(doc);
     await this.store.deleteDocument(draft.id);
+    await this.store.recordSequence(doc.type, year, sequence);
 
     if (doc.sourceProformaId) {
       await this.linkProforma(doc.sourceProformaId, doc.id).catch(() => undefined);
@@ -318,6 +340,93 @@ export class DocumentService {
     });
   }
 
+  // ── Numerazione ────────────────────────────────────────────
+  async numbering(year: number): Promise<Numbering> {
+    const issuer = await this.store.getIssuer();
+    const used = await this.store.sequences(year);
+    const series = Object.fromEntries(
+      NUMBERING_SERIES.map((name) => {
+        const { lastUsed, lastIssuedHere } = used[name];
+        const next = lastUsed + 1;
+        const nextNumber = formatDocumentNumber(issuer.numbering[name], next, year);
+        return [name, { lastUsed, next, nextNumber, minNext: lastIssuedHere + 1 }];
+      }),
+    ) as Record<NumberingSeries, SeriesNumbering>;
+    return { year, series };
+  }
+
+  /**
+   * Imposta il prossimo numero di una o più serie per l'anno, per esempio quando la numerazione
+   * è cominciata con un altro programma. Non può scendere sotto un documento emesso qui.
+   */
+  async setNextNumbers(year: number, next: Partial<Record<NumberingSeries, number>>): Promise<Numbering> {
+    return this.lock.run(async () => {
+      const current = await this.numbering(year);
+      for (const name of NUMBERING_SERIES) {
+        const value = next[name];
+        if (value === undefined) continue;
+        const { minNext } = current.series[name];
+        if (value < minNext) {
+          throw new ConflictError(
+            `${NUMBERING_SERIES_TITLES[name]} ${year}: il prossimo numero deve essere almeno ${minNext}, perché il ${minNext - 1} è già stato emesso`,
+          );
+        }
+      }
+      for (const name of NUMBERING_SERIES) {
+        const value = next[name];
+        if (value !== undefined) await this.store.setLastSequence(name, year, value - 1);
+      }
+      return this.numbering(year);
+    });
+  }
+
+  // ── Riapertura ─────────────────────────────────────────────
+  /**
+   * Riporta un documento emesso a bozza per correggerlo, con lo stesso numero: alla nuova
+   * emissione riprende quel numero e genera XML e PDF nuovi (con un nuovo progressivo invio,
+   * come serve per rimandare una fattura scartata dallo SdI). XML e PDF vecchi si cancellano,
+   * così non si rischia di caricare quelli superati.
+   */
+  async reopen(id: string): Promise<Document> {
+    return this.lock.run(async () => {
+      const doc = await this.store.getDocument(id);
+      if (doc.status === 'draft') throw new ConflictError('Il documento è già una bozza');
+      if (doc.convertedToId) {
+        throw new ConflictError('La proforma è già stata convertita in fattura: modifica la fattura');
+      }
+      if (doc.number && (doc.type === 'TD01' || doc.type === 'TD06')) {
+        const creditNote = (await this.store.listDocuments()).find(
+          (d) => d.type === 'TD04' && d.linkedInvoice?.number === doc.number && d.linkedInvoice?.date === doc.date,
+        );
+        if (creditNote) {
+          throw new ConflictError('Esiste una nota di credito collegata a questa fattura: non si può riaprire');
+        }
+      }
+      const files = await Promise.all(
+        (['xml', 'pdf'] as const).map((kind) => this.outputFile(id, kind).then((f) => f.file).catch(() => null)),
+      );
+
+      const draft: Document = {
+        ...doc,
+        id: newDraftId(),
+        status: 'draft',
+        number: undefined,
+        sequence: doc.sequence,
+        issuedAt: undefined,
+        uploadedAt: undefined,
+        sdiNotes: undefined,
+        transmissionSequence: undefined,
+        xmlFileName: undefined,
+        pdfFileName: undefined,
+      };
+      // Prima la bozza, poi si toglie l'emesso: se qualcosa va storto restano entrambi.
+      await this.store.saveDocument(draft);
+      await this.store.deleteDocument(doc.id);
+      for (const file of files) if (file) await fs.rm(file, { force: true });
+      return draft;
+    });
+  }
+
   /** Percorso di un file generato (XML o PDF) di un documento emesso. */
   async outputFile(id: string, kind: 'xml' | 'pdf'): Promise<{ file: string; fileName: string }> {
     const doc = await this.store.getDocument(id);
@@ -349,7 +458,6 @@ export class DocumentService {
 const SERVER_ONLY_FIELDS = {
   status: 'draft',
   number: undefined,
-  sequence: undefined,
   issuedAt: undefined,
   uploadedAt: undefined,
   sdiNotes: undefined,

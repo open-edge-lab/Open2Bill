@@ -1,5 +1,6 @@
 import {
   Alert,
+  Anchor,
   Box,
   Button,
   Checkbox,
@@ -61,6 +62,7 @@ import {
   useInvalidateDocuments,
   useIssueDocument,
   useIssuer,
+  useNumbering,
 } from '../api/hooks';
 import type { DocumentDetails } from '../api/types';
 import { CustomerFields } from '../components/CustomerFields';
@@ -158,17 +160,32 @@ export function DocumentEditor({ initial, isNew }: { initial: Document; isNew: b
     });
   }, [blocker]);
 
-  // Prossimo numero (indicativo): massimo progressivo della serie nell'anno + 1
-  const nextNumber = useMemo(() => {
-    if (!issuer || !documentsQ.data) return null;
-    const year = Number(values.date.slice(0, 4));
+  // Numero: quello scelto nella bozza (anche di un documento riaperto) oppure il prossimo della
+  // numerazione salvata, che cresce a ogni emissione.
+  const year = Number(values.date.slice(0, 4));
+  const numberingQ = useNumbering(year);
+  const proposedSequence = numberingQ.data?.series[seriesFor(type)].next;
+  const sequence = values.sequence ?? proposedSequence;
+  const formattedNumber = issuer && sequence ? documentNumberFor(issuer, type, sequence, year) : null;
+  // Numeri già usati nell'anno e nella serie, dagli id dei documenti emessi ("2026-invoice-0016").
+  const usedSequences = useMemo(() => {
     const series = seriesFor(type);
     const word = series === 'creditNote' ? 'credit-note' : series;
-    const max = documentsQ.data
-      .map((d) => d.id.match(new RegExp(`^${year}-${word}-(\\d+)$`)))
-      .reduce((acc, m) => (m ? Math.max(acc, Number(m[1])) : acc), 0);
-    return documentNumberFor(issuer, type, max + 1, year);
-  }, [issuer, documentsQ.data, values.date, type]);
+    const pattern = new RegExp(`^${year}-${word}-(\\d+)$`);
+    return new Set((documentsQ.data ?? []).map((d) => pattern.exec(d.id)).filter((m) => m !== null).map((m) => Number(m[1])));
+  }, [documentsQ.data, type, year]);
+  const sequenceTaken = values.sequence !== undefined && usedSequences.has(values.sequence);
+  function setSequence(value: string | number) {
+    const n = typeof value === 'number' ? value : Number.parseInt(value, 10);
+    form.setFieldValue('sequence', Number.isInteger(n) && n > 0 && n !== proposedSequence ? n : undefined);
+  }
+  const sequenceHint = (() => {
+    if (!proposedSequence || !sequence) return undefined;
+    const full = formattedNumber && formattedNumber !== String(sequence) ? `Numero completo: ${formattedNumber}. ` : '';
+    if (values.sequence === undefined) return `${full}È il prossimo della numerazione.`;
+    if (sequence > proposedSequence) return `${full}Salta i numeri da ${proposedSequence} a ${sequence - 1}.`;
+    return sequenceTaken ? full || undefined : `${full}Numero libero, più basso del prossimo (${proposedSequence}).`;
+  })();
 
   const customers = customersQ.data ?? [];
   const issuedInvoices = (documentsQ.data ?? []).filter((d) => (d.type === 'TD01' || d.type === 'TD06') && d.status !== 'draft');
@@ -269,7 +286,7 @@ export function DocumentEditor({ initial, isNew }: { initial: Document; isNew: b
       title: `Emettere la ${title}?`,
       children: (
         <Text size="sm">
-          Riceverà il numero <b>{nextNumber ?? 'successivo'}</b> e non sarà più modificabile.
+          Riceverà il numero <b>{formattedNumber ?? 'successivo'}</b>.
           {type !== 'proforma' && ' Verranno generati il file XML per l’Agenzia delle Entrate e il PDF.'}
         </Text>
       ),
@@ -378,10 +395,18 @@ export function DocumentEditor({ initial, isNew }: { initial: Document; isNew: b
         <div>
           <Title order={1}>{title}</Title>
           <Text c="dimmed" size="sm">
-            Numero {nextNumber ? `${nextNumber} (assegnato all’emissione)` : 'assegnato all’emissione'}
+            Numero {formattedNumber ? `${formattedNumber} (assegnato all’emissione)` : 'assegnato all’emissione'}
           </Text>
         </div>
-        <SegmentedControl data={TYPE_OPTIONS} {...form.getInputProps('type')} />
+        <SegmentedControl
+          data={TYPE_OPTIONS}
+          {...form.getInputProps('type')}
+          onChange={(value) => {
+            // un numero scelto vale per la serie di prima: con il tipo si torna al prossimo
+            form.setFieldValue('type', value as DocumentKind);
+            form.setFieldValue('sequence', undefined);
+          }}
+        />
       </Group>
 
       <Grid gutter="lg">
@@ -389,6 +414,28 @@ export function DocumentEditor({ initial, isNew }: { initial: Document; isNew: b
           <Stack gap="md">
             <Section title="Documento">
               <Group grow align="flex-start">
+                <NumberInput
+                  label="Numero"
+                  min={1}
+                  allowDecimal={false}
+                  allowNegative={false}
+                  value={sequence ?? ''}
+                  onChange={setSequence}
+                  description={
+                    <>
+                      {sequenceHint}
+                      {values.sequence !== undefined && proposedSequence && (
+                        <>
+                          {' '}
+                          <Anchor component="button" type="button" size="xs" onClick={() => form.setFieldValue('sequence', undefined)}>
+                            Usa il prossimo ({proposedSequence})
+                          </Anchor>
+                        </>
+                      )}
+                    </>
+                  }
+                  error={sequenceTaken ? `Il numero ${formattedNumber} del ${year} è già usato` : undefined}
+                />
                 <DateInput
                   label="Data"
                   valueFormat="DD/MM/YYYY"

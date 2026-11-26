@@ -22,17 +22,21 @@ import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconFolderOpen, IconTemplate } from '@tabler/icons-react';
 import {
+  NUMBERING_SERIES,
+  NUMBERING_SERIES_TITLES,
   PAYMENT_METHODS,
   PAYMENT_REASONS,
   PENSION_FUNDS,
   TAX_REGIMES,
   WITHHOLDING_TYPES,
+  formatDocumentNumber,
   type IssuerInput,
+  type NumberingSeries,
 } from '@open2bill/core';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ApiError, api, errorMessage } from '../api/client';
-import { keys, useAppInfo, useAuthStatus, useIssuer } from '../api/hooks';
+import { keys, useAppInfo, useAuthStatus, useIssuer, useNumbering } from '../api/hooks';
 import type { IssuerResponse } from '../api/types';
 import { IssuesList } from '../components/IssuesList';
 import { desktop } from '../lib/desktop';
@@ -323,6 +327,73 @@ function IssuerForm({ initial, isFirstRun }: { initial: IssuerInput; isFirstRun:
   );
 }
 
+/**
+ * Prossimo numero di ogni serie per l'anno in corso. Di solito non si tocca: cresce da solo a
+ * ogni emissione. Serve quando la numerazione dell'anno è cominciata con un altro programma.
+ */
+function NumberingSection({ formats }: { formats: Record<NumberingSeries, string> }) {
+  const year = new Date().getFullYear();
+  const qc = useQueryClient();
+  const numbering = useNumbering(year);
+  const [edits, setEdits] = useState<Partial<Record<NumberingSeries, number>>>({});
+  const [busy, setBusy] = useState(false);
+  if (!numbering.data) return null;
+  const series = numbering.data.series;
+  const valueOf = (name: NumberingSeries) => edits[name] ?? series[name].next;
+  const changed = NUMBERING_SERIES.some((name) => edits[name] !== undefined && edits[name] !== series[name].next);
+  const invalid = NUMBERING_SERIES.some((name) => valueOf(name) < series[name].minNext);
+
+  async function save() {
+    setBusy(true);
+    try {
+      await api.put('/api/numbering', { year, next: edits });
+      setEdits({});
+      await qc.invalidateQueries({ queryKey: keys.numberingAll });
+      notifications.show({ message: 'Numerazione salvata.', color: 'stamp' });
+    } catch (err) {
+      notifications.show({ title: 'Numerazione non salvata', message: errorMessage(err), color: 'red' });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Section
+      title={`Prossimi numeri ${year}`}
+      description="Il numero proposto al prossimo documento di ogni serie: cresce da solo a ogni emissione. Cambialo se quest’anno hai già emesso documenti con un altro programma; nel documento puoi comunque sceglierne un altro."
+    >
+      <Grid gutter="sm">
+        {NUMBERING_SERIES.map((name) => {
+          const value = valueOf(name);
+          const { minNext } = series[name];
+          return (
+            <Grid.Col key={name} span={{ base: 12, sm: 4 }}>
+              <NumberInput
+                label={`${NUMBERING_SERIES_TITLES[name]}: prossimo numero`}
+                description={`Numero completo: ${formatDocumentNumber(formats[name], value, year)}`}
+                min={1}
+                allowDecimal={false}
+                allowNegative={false}
+                value={value}
+                onChange={(v) => {
+                  const n = typeof v === 'number' ? v : Number.parseInt(v, 10);
+                  setEdits((e) => ({ ...e, [name]: Number.isInteger(n) && n > 0 ? n : undefined }));
+                }}
+                error={value < minNext ? `Almeno ${minNext}: il ${minNext - 1} è già stato emesso` : undefined}
+              />
+            </Grid.Col>
+          );
+        })}
+      </Grid>
+      <Group justify="flex-end">
+        <Button onClick={save} loading={busy} disabled={!changed || invalid}>
+          Salva numerazione
+        </Button>
+      </Group>
+    </Section>
+  );
+}
+
 /** Come MIN_PASSWORD_LENGTH del server, che resta comunque quello che decide. */
 const MIN_PASSWORD_LENGTH = 10;
 
@@ -456,6 +527,8 @@ export function SettingsPage() {
           isFirstRun={!app.data.hasIssuer}
         />
       )}
+
+      {app.data?.hasIssuer && issuer.data && <NumberingSection formats={issuer.data.issuer.numbering} />}
 
       <Paper withBorder p="md">
         <Title order={3}>Cartella dati e template</Title>

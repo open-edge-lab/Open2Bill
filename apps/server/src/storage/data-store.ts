@@ -7,9 +7,11 @@ import {
   IssuerSchema,
   calculateTotals,
   displayName,
+  NUMBERING_SERIES,
   seriesFor,
   slugify,
   type Catalog,
+  type NumberingSeries,
   type Customer,
   type Document,
   type DocumentKind,
@@ -61,7 +63,25 @@ function parseOrThrow<T>(schema: z.ZodType<T>, data: unknown, file: string): T {
   return result.data;
 }
 
-const STATE_SCHEMA = z.object({ transmissionCounter: z.number().int().min(0).default(0) });
+const lastSequence = z.number().int().min(0).optional();
+const STATE_SCHEMA = z.object({
+  transmissionCounter: z.number().int().min(0).default(0),
+  /**
+   * Ultimo numero usato per anno e serie, anche se impostato a mano (per esempio quando la
+   * numerazione dell'anno è cominciata con un altro programma).
+   */
+  lastSequences: z
+    .record(z.string(), z.object({ invoice: lastSequence, creditNote: lastSequence, proforma: lastSequence }))
+    .default({}),
+});
+type State = z.infer<typeof STATE_SCHEMA>;
+
+export interface SeriesSequences {
+  /** Ultimo numero dei documenti emessi qui: il prossimo non può essere più basso. */
+  lastIssuedHere: number;
+  /** Ultimo numero usato: il più alto tra quelli emessi qui e quello salvato. */
+  lastUsed: number;
+}
 
 export class DataStore {
   readonly paths: DataPaths;
@@ -230,14 +250,45 @@ export class DataStore {
     });
   }
 
-  /** Prossimo progressivo annuale per la serie del tipo documento (fatture, note di credito, proforma). */
+  // ── Numerazione ────────────────────────────────────────────
+  /** Numeri usati nell'anno, per serie (fatture, note di credito, proforma). */
+  async sequences(year: number): Promise<Record<NumberingSeries, SeriesSequences>> {
+    const [state, docs] = await Promise.all([this.readState(), this.listDocuments()]);
+    const saved = state.lastSequences[String(year)] ?? {};
+    const entries = NUMBERING_SERIES.map((series) => {
+      const lastIssuedHere = Math.max(
+        0,
+        ...docs
+          .filter((d) => d.status !== 'draft' && seriesFor(d.type) === series && d.date.startsWith(String(year)))
+          .map((d) => d.sequence ?? 0),
+      );
+      return [series, { lastIssuedHere, lastUsed: Math.max(lastIssuedHere, saved[series] ?? 0) }] as const;
+    });
+    return Object.fromEntries(entries) as Record<NumberingSeries, SeriesSequences>;
+  }
+
+  /** Prossimo progressivo annuale per la serie del tipo documento. */
   async nextSequence(type: DocumentKind, year: number): Promise<number> {
+    return (await this.sequences(year))[seriesFor(type)].lastUsed + 1;
+  }
+
+  /** Salva l'ultimo numero usato di una serie (impostato a mano: può anche scendere). */
+  async setLastSequence(series: NumberingSeries, year: number, last: number): Promise<void> {
+    const state = await this.readState();
+    const key = String(year);
+    state.lastSequences[key] = { ...state.lastSequences[key], [series]: last };
+    await this.writeState(state);
+  }
+
+  /** Dopo un'emissione: l'ultimo numero usato sale, se serve. */
+  async recordSequence(type: DocumentKind, year: number, sequence: number): Promise<void> {
+    const state = await this.readState();
+    const key = String(year);
     const series = seriesFor(type);
-    const docs = await this.listDocuments();
-    const used = docs
-      .filter((d) => d.status !== 'draft' && seriesFor(d.type) === series && d.date.startsWith(String(year)))
-      .map((d) => d.sequence ?? 0);
-    return Math.max(0, ...used) + 1;
+    const current = state.lastSequences[key]?.[series] ?? 0;
+    if (sequence <= current) return;
+    state.lastSequences[key] = { ...state.lastSequences[key], [series]: sequence };
+    await this.writeState(state);
   }
 
   // ── Stato (progressivo invio) ──────────────────────────────
@@ -246,16 +297,25 @@ export class DataStore {
    * documenti già emessi, così non si riusa un progressivo anche se state.yaml si perde.
    */
   async nextTransmissionCounter(): Promise<number> {
-    const file = this.paths.state;
-    const state = (await fileExists(file)) ? STATE_SCHEMA.parse(await readYaml(file)) : STATE_SCHEMA.parse({});
+    const state = await this.readState();
     const fromDocs = (await this.listDocuments())
       .map((d) => (d.transmissionSequence ? parseInt(d.transmissionSequence, 36) : 0))
       .filter((n) => Number.isFinite(n));
     const next = Math.max(state.transmissionCounter, ...fromDocs, 0) + 1;
-    await writeYaml(file, { transmissionCounter: next }, {
-      headerComment: ' Stato interno di Open2Bill (progressivo invio dei file XML). Non modificare.',
-    });
+    await this.writeState({ ...state, transmissionCounter: next });
     return next;
+  }
+
+  private async readState(): Promise<State> {
+    const file = this.paths.state;
+    return STATE_SCHEMA.parse((await fileExists(file)) ? await readYaml(file) : {});
+  }
+
+  /** Scrive lo stato intero: writeYaml toglie le chiavi assenti, quindi mai solo una parte. */
+  private async writeState(state: State): Promise<void> {
+    await writeYaml(this.paths.state, state, {
+      headerComment: ' Stato interno di Open2Bill (progressivo invio e numerazione). Non modificare a mano.',
+    });
   }
 }
 

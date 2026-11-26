@@ -20,6 +20,7 @@ import {
   IconDownload,
   IconFileInvoice,
   IconFolderOpen,
+  IconPencil,
   IconReceiptRefund,
   IconRefresh,
   IconUpload,
@@ -77,6 +78,7 @@ export function DocumentView({ details }: { details: DocumentDetails }) {
   const creditNote = useDocumentAction('credit-note');
   const duplicate = useDocumentAction('duplicate');
   const regenerate = useDocumentAction('regenerate-pdf');
+  const reopen = useDocumentAction('reopen');
   const [html, setHtml] = useState<string | null>(null);
 
   const title = DOCUMENT_KIND_TITLES[doc.type];
@@ -89,6 +91,37 @@ export function DocumentView({ details }: { details: DocumentDetails }) {
       .then(setHtml)
       .catch(() => setHtml(null));
   }, [doc]);
+
+  /** Riapertura: torna bozza con lo stesso numero; XML e PDF vecchi si cancellano. */
+  function confirmReopen() {
+    const uploaded = doc.status === 'uploaded';
+    modals.openConfirmModal({
+      title: `Riaprire ${isProforma ? 'la proforma' : `la ${title.toLowerCase()}`} n. ${doc.number}?`,
+      children: (
+        <Stack gap="xs">
+          <Text size="sm">
+            Torna bozza: la modifichi e la riemetti con lo stesso numero ({doc.number}).
+            {!isProforma && ' Il file XML e il PDF già generati vengono eliminati; alla nuova emissione se ne creano di nuovi.'}
+          </Text>
+          {uploaded ? (
+            <Alert color="red" p="xs">
+              Risulta caricata sullo SdI: riaprila solo se lo SdI l’ha scartata. Una fattura consegnata non si modifica, si
+              corregge con una nota di credito.
+            </Alert>
+          ) : (
+            !isProforma && (
+              <Text size="sm" c="dimmed">
+                Se l’hai già caricata sullo SdI e l’ha accettata non riaprirla: serve una nota di credito.
+              </Text>
+            )
+          )}
+        </Stack>
+      ),
+      labels: { confirm: 'Riapri e modifica', cancel: 'Annulla' },
+      confirmProps: uploaded ? { color: 'red' } : undefined,
+      onConfirm: () => void run(reopen, 'Documento riaperto come bozza.'),
+    });
+  }
 
   async function run(action: ReturnType<typeof useDocumentAction>, success: string, open = true) {
     try {
@@ -222,6 +255,11 @@ export function DocumentView({ details }: { details: DocumentDetails }) {
                     onClick={() => run(creditNote, 'Bozza di nota di credito creata.')}
                   >
                     Crea nota di credito
+                  </Button>
+                )}
+                {!doc.convertedToId && (
+                  <Button variant="default" leftSection={<IconPencil size={16} />} loading={reopen.isPending} onClick={confirmReopen}>
+                    Riapri per modificare
                   </Button>
                 )}
                 <Button variant="default" leftSection={<IconCopy size={16} />} loading={duplicate.isPending} onClick={() => run(duplicate, 'Copia creata come bozza.')}>

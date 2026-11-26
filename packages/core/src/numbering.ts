@@ -5,6 +5,14 @@ import type { DocumentKind, Issuer } from './model';
 
 export type NumberingSeries = 'invoice' | 'creditNote' | 'proforma';
 
+export const NUMBERING_SERIES: readonly NumberingSeries[] = ['invoice', 'creditNote', 'proforma'];
+
+export const NUMBERING_SERIES_TITLES: Record<NumberingSeries, string> = {
+  invoice: 'Fatture',
+  creditNote: 'Note di credito',
+  proforma: 'Proforma',
+};
+
 export function seriesFor(type: DocumentKind): NumberingSeries {
   if (type === 'proforma') return 'proforma';
   if (type === 'TD04') return 'creditNote';
